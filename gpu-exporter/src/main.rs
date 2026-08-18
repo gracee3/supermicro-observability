@@ -15,6 +15,64 @@ const WATCHDOG_TIMEOUT: Duration = Duration::from_millis(1500);
 const QUERY_FIELDS: &str = "index,uuid,name,utilization.gpu,utilization.memory,memory.used,memory.total,power.draw,temperature.gpu,fan.speed,clocks.current.graphics,clocks.current.memory,pstate,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,pcie.link.width.max,clocks_event_reasons.active,clocks_event_reasons.gpu_idle,clocks_event_reasons.applications_clocks_setting,clocks_event_reasons.sw_power_cap,clocks_event_reasons.hw_slowdown,clocks_event_reasons.hw_thermal_slowdown,clocks_event_reasons.hw_power_brake_slowdown,clocks_event_reasons.sw_thermal_slowdown,clocks_event_reasons.sync_boost";
 
 #[derive(Clone, Debug)]
+enum IdentityMode {
+    Alias,
+    Index,
+    Uuid,
+}
+
+#[derive(Clone, Debug)]
+struct IdentityConfig {
+    mode: IdentityMode,
+    salt: String,
+}
+
+impl IdentityConfig {
+    fn from_environment() -> Result<Self, String> {
+        let mode = match env::var("GPU_EXPORTER_IDENTITY_MODE")
+            .unwrap_or_else(|_| "alias".to_string())
+            .as_str()
+        {
+            "alias" => IdentityMode::Alias,
+            "index" => IdentityMode::Index,
+            "uuid" => IdentityMode::Uuid,
+            value => return Err(format!("invalid GPU_EXPORTER_IDENTITY_MODE: {value}")),
+        };
+        let salt = env::var("GPU_EXPORTER_IDENTITY_SALT").unwrap_or_default();
+        if matches!(mode, IdentityMode::Alias) && salt.len() < 16 {
+            return Err(
+                "GPU_EXPORTER_IDENTITY_SALT must contain at least 16 characters".to_string(),
+            );
+        }
+        Ok(Self { mode, salt })
+    }
+
+    fn public_id(&self, sample: &Sample) -> String {
+        match self.mode {
+            IdentityMode::Uuid => sample.uuid.clone(),
+            IdentityMode::Index => format!("index-{}", sample.index),
+            IdentityMode::Alias => {
+                // Keyed FNV-1a provides a deterministic local pseudonym without
+                // adding a cryptographic dependency. It is not an anonymity
+                // primitive; the private salt prevents cross-host correlation.
+                let mut hash = 0xcbf29ce484222325_u64;
+                for byte in self
+                    .salt
+                    .as_bytes()
+                    .iter()
+                    .chain([0_u8].iter())
+                    .chain(sample.uuid.as_bytes())
+                {
+                    hash ^= u64::from(*byte);
+                    hash = hash.wrapping_mul(0x100000001b3);
+                }
+                format!("gpu-{hash:016x}")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 struct Sample {
     index: u32,
     uuid: String,
@@ -160,11 +218,12 @@ struct ExporterState {
     parse_errors_total: u64,
     sampler_restarts_total: u64,
     watchdog_timeouts_total: u64,
-    gpus: BTreeMap<u32, GpuSeries>,
+    identity: IdentityConfig,
+    gpus: BTreeMap<String, GpuSeries>,
 }
 
 impl ExporterState {
-    fn new() -> Self {
+    fn with_identity(identity: IdentityConfig) -> Self {
         Self {
             started: Instant::now(),
             process_up: false,
@@ -173,6 +232,7 @@ impl ExporterState {
             parse_errors_total: 0,
             sampler_restarts_total: 0,
             watchdog_timeouts_total: 0,
+            identity,
             gpus: BTreeMap::new(),
         }
     }
@@ -181,11 +241,12 @@ impl ExporterState {
         self.process_up = true;
         self.last_sample = Some(now);
         self.samples_total += 1;
-        match self.gpus.get_mut(&sample.index) {
+        let uuid = sample.uuid.clone();
+        match self.gpus.get_mut(&uuid) {
             Some(series) => series.update(sample, now, unix_now),
             None => {
                 self.gpus
-                    .insert(sample.index, GpuSeries::new(sample, now, unix_now));
+                    .insert(uuid, GpuSeries::new(sample, now, unix_now));
             }
         }
     }
@@ -411,11 +472,11 @@ fn escape_label(value: &str) -> String {
         .replace('"', "\\\"")
 }
 
-fn gpu_labels(sample: &Sample) -> String {
+fn gpu_labels(sample: &Sample, identity: &IdentityConfig) -> String {
     format!(
-        "{{gpu_index=\"{}\",gpu_uuid=\"{}\",gpu_name=\"{}\"}}",
+        "{{gpu_index=\"{}\",gpu_id=\"{}\",gpu_name=\"{}\"}}",
         sample.index,
-        escape_label(&sample.uuid),
+        escape_label(&identity.public_id(sample)),
         escape_label(&sample.name)
     )
 }
@@ -485,7 +546,7 @@ fn render_metrics(state: &ExporterState, now: Instant) -> String {
 
     for series in state.gpus.values() {
         let sample = &series.latest;
-        let labels = gpu_labels(sample);
+        let labels = gpu_labels(sample, &state.identity);
         out.push_str(&format!("supermicro_gpu_info{labels} 1\n"));
         out.push_str(&format!(
             "supermicro_gpu_sample_timestamp_seconds{labels} {}\n",
@@ -620,9 +681,9 @@ fn render_metrics(state: &ExporterState, now: Instant) -> String {
         for (reason, value) in reasons {
             if let Some(value) = value {
                 let reason_labels = format!(
-                    "{{gpu_index=\"{}\",gpu_uuid=\"{}\",gpu_name=\"{}\",reason=\"{}\"}}",
+                    "{{gpu_index=\"{}\",gpu_id=\"{}\",gpu_name=\"{}\",reason=\"{}\"}}",
                     sample.index,
-                    escape_label(&sample.uuid),
+                    escape_label(&state.identity.public_id(sample)),
                     escape_label(&sample.name),
                     reason
                 );
@@ -749,7 +810,9 @@ fn main() {
         std::process::exit(if healthcheck(&listen) { 0 } else { 1 });
     }
 
-    let shared = Arc::new(RwLock::new(ExporterState::new()));
+    let identity = IdentityConfig::from_environment()
+        .unwrap_or_else(|error| panic!("invalid GPU identity configuration: {error}"));
+    let shared = Arc::new(RwLock::new(ExporterState::with_identity(identity)));
     let sampler_state = Arc::clone(&shared);
     thread::spawn(move || sampler_loop(sampler_state));
 
@@ -771,7 +834,14 @@ fn main() {
 mod tests {
     use super::*;
 
-    const NORMAL_ROW: &str = "0, GPU-TEST-PRIMARY, NVIDIA GeForce RTX 3090, 71, 12, 4096, 24576, 312.5, 67, 64, 1695, 9751, P2, 3, 3, 16, 16, 0x0000000000000004, Not Active, Not Active, Active, Not Active, Not Active, Not Active, Not Active, Not Active";
+    const NORMAL_ROW: &str = "0, GPU-TEST-PRIMARY, NVIDIA Test GPU, 71, 12, 4096, 24576, 312.5, 67, 64, 1695, 9751, P2, 3, 3, 16, 16, 0x0000000000000004, Not Active, Not Active, Active, Not Active, Not Active, Not Active, Not Active, Not Active";
+
+    fn uuid_state() -> ExporterState {
+        ExporterState::with_identity(IdentityConfig {
+            mode: IdentityMode::Uuid,
+            salt: String::new(),
+        })
+    }
 
     #[test]
     fn parses_normal_row() {
@@ -808,18 +878,53 @@ mod tests {
             .replacen("0,", "1,", 1)
             .replace("GPU-TEST-PRIMARY", "GPU-TEST-SECONDARY");
         let now = Instant::now();
-        let mut state = ExporterState::new();
+        let mut state = uuid_state();
         state.record_sample(parse_line(&gpu_one).unwrap(), now, 1.0);
         state.record_sample(parse_line(NORMAL_ROW).unwrap(), now, 1.0);
         let metrics = render_metrics(&state, now);
         assert_eq!(state.gpus.len(), 2);
-        assert!(metrics.contains("gpu_index=\"0\",gpu_uuid=\"GPU-TEST-PRIMARY\""));
-        assert!(metrics.contains("gpu_index=\"1\",gpu_uuid=\"GPU-TEST-SECONDARY\""));
+        assert!(metrics.contains("gpu_index=\"0\",gpu_id=\"GPU-TEST-PRIMARY\""));
+        assert!(metrics.contains("gpu_index=\"1\",gpu_id=\"GPU-TEST-SECONDARY\""));
+    }
+
+    #[test]
+    fn gpu_index_change_keeps_uuid_series() {
+        let now = Instant::now();
+        let mut state = uuid_state();
+        state.record_sample(parse_line(NORMAL_ROW).unwrap(), now, 1.0);
+        let moved = NORMAL_ROW.replacen("0,", "3,", 1);
+        state.record_sample(parse_line(&moved).unwrap(), now, 1.25);
+        assert_eq!(state.gpus.len(), 1);
+        let metrics = render_metrics(&state, now);
+        assert!(metrics.contains("gpu_index=\"3\",gpu_id=\"GPU-TEST-PRIMARY\""));
+    }
+
+    #[test]
+    fn alias_mode_hides_uuid_and_is_stable_across_index_change() {
+        let identity = IdentityConfig {
+            mode: IdentityMode::Alias,
+            salt: "local-test-salt-0123456789".to_string(),
+        };
+        let now = Instant::now();
+        let mut state = ExporterState::with_identity(identity);
+        state.record_sample(parse_line(NORMAL_ROW).unwrap(), now, 1.0);
+        let first = render_metrics(&state, now);
+        let moved = NORMAL_ROW.replacen("0,", "3,", 1);
+        state.record_sample(parse_line(&moved).unwrap(), now, 1.25);
+        let second = render_metrics(&state, now);
+        let first_id = first
+            .split("gpu_id=\"")
+            .nth(1)
+            .and_then(|value| value.split('"').next())
+            .unwrap();
+        assert!(first_id.starts_with("gpu-"));
+        assert!(second.contains(&format!("gpu_id=\"{first_id}\"")));
+        assert!(!second.contains("gpu_id=\"GPU-TEST-PRIMARY\""));
     }
 
     #[test]
     fn sampler_failure_marks_down_and_backoff_is_bounded() {
-        let mut state = ExporterState::new();
+        let mut state = uuid_state();
         let now = Instant::now();
         state.record_sample(parse_line(NORMAL_ROW).unwrap(), now, 1.0);
         state.record_sampler_failure(false);
@@ -833,7 +938,7 @@ mod tests {
     fn stale_data_is_retained_but_sampler_is_down() {
         let now = Instant::now();
         let old = now - Duration::from_secs(2);
-        let mut state = ExporterState::new();
+        let mut state = uuid_state();
         state.record_sample(parse_line(NORMAL_ROW).unwrap(), old, 1.0);
         assert!(!state.effective_up(now));
         let metrics = render_metrics(&state, now);

@@ -20,22 +20,20 @@ jobs:
       - name: Add Rust target
         run: rustup target add x86_64-unknown-linux-musl
       - name: Prepare non-secret Compose environment
-        run: cp .env.example .env && chmod 0600 .env
-      - name: Validate Compose and Prometheus
         run: |
-          docker compose config --quiet
-          docker run --rm --entrypoint /bin/promtool \
-            -v "$PWD/prometheus:/etc/prometheus:ro" \
-            prom/prometheus:v3.13.2-distroless@sha256:64f71bb84e03c855948418b0fc5dea53e9543d8e3fc9931598f583805507f05e \
-            check config /etc/prometheus/prometheus.yml
-      - name: Validate dashboards and scripts
+          cp .env.example .env
+          chmod 0600 .env
+          scripts/configure-host --non-interactive --apply --quiet \
+            --host-label ci \
+            --platform-profile generic \
+            --disable-nvidia \
+            --disable-smart \
+            --clear-protected-devices \
+            --allow-any-root \
+            --disable-fan-metrics
+      - name: Validate repository
         run: |
-          for dashboard in grafana/dashboards/*.json; do python3 -m json.tool "$dashboard" >/dev/null; done
-          python3 -c 'import ast, pathlib; ast.parse(pathlib.Path("scripts/generate-dashboards.py").read_text())'
-          for script in scripts/monitoring-mode scripts/container-metrics scripts/observer-check.sh scripts/install-system.sh scripts/rollback-system.sh scripts/render-systemd-unit; do bash -n "$script"; done
-      - name: Test and lint GPU exporter
+          scripts/validate.sh
+      - name: Build static GPU exporter
         run: |
-          cargo fmt --manifest-path gpu-exporter/Cargo.toml -- --check
-          cargo test --locked --manifest-path gpu-exporter/Cargo.toml
-          cargo clippy --locked --manifest-path gpu-exporter/Cargo.toml --all-targets -- -D warnings
           cargo build --locked --release --target x86_64-unknown-linux-musl --manifest-path gpu-exporter/Cargo.toml

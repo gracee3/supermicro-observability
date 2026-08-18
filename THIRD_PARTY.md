@@ -15,8 +15,9 @@ license, notices, and trademarks.
 | Debian base image | `bookworm-slim` digest-pinned | <https://hub.docker.com/_/debian> |
 
 The NVIDIA driver, `nvidia-smi`, NVIDIA Container Toolkit, Docker, Rust, Linux,
-systemd, `ipmitool`, and the separately maintained fan controller are runtime or
-build dependencies and are not copied into this repository.
+and systemd are runtime or build dependencies and are not copied into this
+repository. `ipmitool` and the separately maintained fan controller are required
+only by the explicit legacy fan-integration workflow.
 
 Resolved image digests are recorded in `compose.yaml` and the GPU exporter's
 `Dockerfile`. Before redistribution, audit the exact artifacts and retain all

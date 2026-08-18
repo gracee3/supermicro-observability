@@ -32,7 +32,8 @@ their venue's current policy.
 ## Privacy and data minimization
 
 The default stack avoids per-process GPU metrics, PID and command-line labels,
-external telemetry, and non-loopback listeners. Published screenshots and data
+external telemetry, and non-loopback listeners. Prometheus ingestion also drops
+upstream disk serial and broad NVML UUID/serial/PCI labels. Published screenshots and data
 must be checked for usernames, hostnames, IP addresses, GPU UUIDs, filesystem
 paths, Grafana credentials, workload names, and other identifying metadata.
 Obtain appropriate consent before collecting or publishing metrics about other

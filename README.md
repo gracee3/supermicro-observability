@@ -1,53 +1,80 @@
 # Supermicro observability
 
-Loopback-only, containerized monitoring for a Supermicro X11SPA-TF workstation
-with two NVIDIA RTX 3090 GPUs. The stack combines Prometheus, Grafana,
-node_exporter, a persistent 250 ms GPU sampler, a slower NVML catalog, narrowly
-scoped SMART collection, and cached metrics from an existing native fan
-controller.
+Loopback-only, containerized host monitoring with a safe generic core and
+explicit optional integrations for NVIDIA GPUs, a selected SMART device,
+cached fan-controller metrics, and cAdvisor. The project began on a Supermicro
+X11SPA-TF workstation, but committed configuration contains no real disk, GPU,
+fan-header, or host identity.
 
 > [!CAUTION]
-> This repository encodes one machine's storage identities, fan-controller
-> integration, and measured safety assumptions. Read [Safety](docs/SAFETY.md)
-> and verify every device and fan mapping before deploying it elsewhere. The
-> configuration is not a universal Supermicro fan profile.
+> Monitoring is portable; physical cooling policy is not. This repository does
+> not provide universal fan curves or infer fan-header wiring. Storage devices
+> are disabled until a user selects them explicitly. Read [Safety](docs/SAFETY.md)
+> before enabling SMART, protected-device rules, or fan integration.
 
-## Design guarantees
+## What is generic and what is local
 
-- Every HTTP listener binds to `127.0.0.1`; Grafana is intended to be reached
-  through SSH port forwarding.
-- No route, firewall, SSH, or network-interface changes are made.
-- The protected NVMe device is checked for read-only/unmounted state before
-  startup and is never passed to a container.
-- The native fan controller remains outside Docker. Monitoring consumes its
-  cached textfile output and does not add IPMI polling.
-- GPU process IDs, command lines, and other per-process metrics are disabled.
-- Prometheus retention is capped at 14 days and 12 GB.
+The committed core provides Prometheus, Grafana, node_exporter, dashboards,
+loopback listeners, resource limits, and optional collector profiles. A private
+`.env` generated on each host supplies:
 
-The live target was checked on 2026-08-17: `/dev/nvme1n1` is the encrypted
-system disk and the only SMART target; `/dev/nvme0n1` is a protected,
-unmounted, read-only secondary disk. These names must not be copied to another
-host without live verification.
+- a non-identifying Prometheus host label;
+- enabled NVIDIA and SMART features;
+- stable `/dev/disk/by-id/...` storage identities;
+- any protected-device and encrypted-root policy;
+- the fan textfile directory, if one already exists; and
+- a generated node disk-exclusion expression.
+
+`.env`, generated Prometheus configuration/targets, live databases, backups,
+and build artifacts are excluded from Git.
+
+The `supermicro-x11spa-tf` platform profile performs a DMI compatibility check.
+It does not provide or change fan curves. A dated, redacted example deployment
+is documented separately in
+[the X11SPA-TF dual-GPU case study](docs/deployments/x11spa-tf-dual-rtx3090.md).
 
 ## Quick start
 
-Prerequisites are Docker Engine with Compose, the NVIDIA Container Toolkit, a
-working `nvidia-smi`, Rust with the `x86_64-unknown-linux-musl` target, and the
-host utilities used by the validation scripts. The external fan controller is
-required only for native fan-metric installation.
+Prerequisites are Docker Engine with Compose, Python 3, and standard Linux host
+utilities. NVIDIA Container Toolkit, `nvidia-smi`, Rust, MUSL, and currently an
+x86_64 host are required only when the custom NVIDIA profile is enabled.
 
 ```bash
 git clone git@github.com:gracee3/supermicro-observability.git
 cd supermicro-observability
+scripts/configure-host --interactive --apply
+scripts/doctor
 scripts/validate.sh
 scripts/monitoring-mode normal
 ```
 
-The first `normal` start creates `.env` atomically with mode `0600` and a random
-Grafana administrator password. Never commit that file. See `.env.example` for
-the variable names, not deployable credentials.
+`configure-host` previews choices unless `--apply` is supplied. It writes `.env`
+atomically with mode `0600`, generates a random Grafana password, resolves whole
+disks to stable by-id paths, and renders local Prometheus configuration. It does
+not mount, unlock, scan, or write a selected device.
 
-To reach Grafana from a trusted client:
+For repeatable/headless setup, use explicit flags. This safe generic example
+enables no optional hardware access:
+
+```bash
+scripts/configure-host --non-interactive --apply \
+  --host-label workstation \
+  --platform-profile generic \
+  --disable-nvidia \
+  --disable-smart \
+  --clear-protected-devices \
+  --allow-any-root \
+  --disable-fan-metrics
+```
+
+See [Configuration](docs/CONFIGURATION.md) for NVIDIA, SMART, protected-device,
+and fan-textfile examples. Existing v0.1 deployments should follow the
+[v0.2 migration guide](docs/MIGRATION-v0.2.md) before restarting containers.
+
+## Access and endpoints
+
+All listeners bind explicitly to `127.0.0.1`. Reach Grafana through an existing
+trusted SSH connection:
 
 ```bash
 ssh -L 3000:127.0.0.1:3000 USER@MONITORING_HOST
@@ -55,22 +82,24 @@ ssh -L 3000:127.0.0.1:3000 USER@MONITORING_HOST
 
 Then open `http://127.0.0.1:3000`.
 
-## Endpoints
+| Service | Loopback endpoint | Collection interval | Feature |
+|---|---:|---:|---|
+| Grafana | `127.0.0.1:3000` | 1 s dashboard refresh | core |
+| Prometheus | `127.0.0.1:9090` | varies by job | core |
+| node_exporter | `127.0.0.1:9100` | 1 s fast / 15 s slow | core |
+| persistent GPU sampler | `127.0.0.1:9836` | 250 ms sample / 500 ms scrape | NVIDIA |
+| NVML catalog/XID exporter | `127.0.0.1:9835` | 15 s | NVIDIA |
+| SMART exporter | `127.0.0.1:9633` | 5 min | SMART |
+| cAdvisor | `127.0.0.1:8080` | 5 s | explicit opt-in |
 
-| Service | Loopback endpoint | Collection interval |
-|---|---:|---:|
-| Grafana | `127.0.0.1:3000` | 1 s dashboard refresh |
-| Prometheus | `127.0.0.1:9090` | varies by job |
-| node_exporter | `127.0.0.1:9100` | 1 s fast / 15 s slow |
-| NVML catalog/XID exporter | `127.0.0.1:9835` | 15 s, continuous XID watcher |
-| custom persistent GPU sampler | `127.0.0.1:9836` | 250 ms sample / 500 ms scrape |
-| SMART exporter | `127.0.0.1:9633` | 5 min |
-| optional cAdvisor | `127.0.0.1:8080` | 5 s |
+GPU UUIDs are discovered at runtime and are not configuration inputs. The
+exporter always stores rolling state by UUID, so index reordering does not merge
+physical devices. Published `gpu_id` labels can use the real UUID, current index,
+or the default stable salted alias; the choice and alias salt are private host
+configuration. No process IDs, command lines, or per-process GPU metrics are
+collected.
 
-Custom metrics use the stable `supermicro_gpu_*` and `supermicro_fan_*`
-prefixes. cAdvisor is disabled unless explicitly enabled.
-
-## Operating modes
+## Operation
 
 ```bash
 scripts/monitoring-mode normal
@@ -80,67 +109,58 @@ scripts/container-metrics on
 scripts/container-metrics off
 ```
 
-`normal` runs the six core containers. `benchmark` retains Prometheus,
-node_exporter, the fast GPU sampler, and cached fan metrics while stopping
-Grafana, SMART, the slower NVML catalog, and cAdvisor. `off` stops monitoring
-containers and does not touch the fan controller.
+`normal` starts the core plus enabled NVIDIA and SMART profiles. `benchmark`
+keeps Prometheus, node_exporter, and the fast GPU sampler when configured, while
+stopping Grafana, SMART, the slow NVML catalog, and cAdvisor. `off` stops all
+monitoring containers. None of these commands installs, stops, or restarts a fan
+controller.
 
-Prometheus and Grafana data remain under `data/` and are excluded from Git.
-Backups, Rust build products, and `.env` are also excluded.
+Dashboards use a selectable disk variable instead of a committed device name.
+Unavailable optional metrics appear as no data; their empty file-discovery
+targets do not create permanent Prometheus scrape failures.
 
-## Native installation and rollback
+## Native startup and fan integration
 
-The native fan controller is a separate safety-critical project and is not
-vendored here. By default the installer expects a sibling checkout named
-`supermicro-fan-control`; set `FAN_CONTROL_DIR` to use another location. It must
-provide `supermicro-fan-control` and `supermicro-fan-control.service`, already
-reviewed and calibrated for the host.
+Install only the monitoring systemd unit with:
 
 ```bash
 sudo ./scripts/install-system.sh
 ```
 
-The installer preserves fixed pre-metrics backups under
-`/var/backups/supermicro-observability`, installs the fan metrics integration,
-briefly restarts only the fan service if its files changed, renders the systemd
-unit for the project owner, and enables the Compose oneshot. The controller's
-stop hook selects BMC Full mode until the controller resumes.
-
-Rollback stops and disables the monitoring unit without deleting bind-mounted
-data, then restores the pre-metrics fan controller if backups exist:
+Rollback disables the unit and removes containers without deleting bind-mounted
+data:
 
 ```bash
 sudo ./scripts/rollback-system.sh
 ```
 
-## Validation and measured overhead
+Both commands leave fan control untouched. A separately reviewed controller can
+write the documented [fan metrics contract](docs/FAN-METRICS.md). The legacy
+X11SPA-TF controller integration is available only through an explicit command
+whose confirmation flag states that it restarts fan control:
 
-`scripts/validate.sh` checks Compose, Prometheus, dashboard JSON, Rust tests and
-lint, shell syntax, image digests, systemd rendering, and storage-device scope.
-`scripts/observer-check.sh 300` checks the five-minute CPU and memory budgets and
-reports down Prometheus targets.
+```bash
+sudo FAN_CONTROL_DIR=/reviewed/path \
+  ./scripts/install-fan-integration.sh \
+  --i-understand-this-restarts-fan-control
+```
 
-A single target-host run on 2026-08-17 observed:
+## Validation and publication
 
-- fast GPU exporter: 1.885% of one logical CPU on average;
-- complete stack: 8.498% of one logical CPU on average;
-- peak aggregate container memory: 285.8 MiB;
-- node fast-scrape p95: 21.4 ms; GPU scrape p95: 1.78 ms; and
-- Prometheus data growth over a 30-second observation: approximately 6.9 KiB/s.
+`scripts/doctor` validates only the private host profile and live prerequisites.
+`scripts/validate.sh` checks generated configuration, Compose, Prometheus,
+dashboards, Python configuration tests, Rust tests/lint, shell syntax, systemd,
+image digests, optional target wiring, and the absence of committed device
+identities.
 
-These are descriptive engineering measurements, not general performance
-claims. The procedure, limitations, and reproduction steps are in
-[Methodology](docs/METHODOLOGY.md).
+`scripts/observer-check.sh 300` measures the deployment budget. Its method and
+limitations are in [Methodology](docs/METHODOLOGY.md); results from one machine
+must not be presented as general performance claims.
 
-## Publication and reuse
+- Cite releases using [`CITATION.cff`](CITATION.cff).
+- Follow [publication ethics](docs/PUBLICATION-ETHICS.md) for derived reports.
+- Follow [`CONTRIBUTING.md`](CONTRIBUTING.md) for provenance and testing.
+- Review [`THIRD_PARTY.md`](THIRD_PARTY.md) for upstream components.
 
-- Cite the software using [`CITATION.cff`](CITATION.cff).
-- Review [publication ethics](docs/PUBLICATION-ETHICS.md) before reporting or
-  extending benchmark results.
-- Contributions must follow [`CONTRIBUTING.md`](CONTRIBUTING.md), including
-  provenance and test disclosures.
-- Upstream components and their independent licensing are listed in
-  [`THIRD_PARTY.md`](THIRD_PARTY.md).
-
-This repository is licensed under the [MIT License](LICENSE). Container images
-and external projects retain their own licenses and trademarks.
+The project is licensed under the [MIT License](LICENSE). Container images and
+external controllers retain their independent licenses and trademarks.

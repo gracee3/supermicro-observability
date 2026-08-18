@@ -3,24 +3,17 @@ set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 project_dir="$(cd -- "$script_dir/.." && pwd -P)"
-target_file="$project_dir/prometheus/file_sd/cadvisor.json"
+host_config="$script_dir/host_config.py"
 compose=(docker compose --project-directory "$project_dir" --file "$project_dir/compose.yaml" --profile containers)
-
-write_targets() {
-    local contents="$1" temp_file
-    temp_file="$(mktemp "$target_file.XXXXXX")"
-    printf '%s\n' "$contents" >"$temp_file"
-    chmod 0644 "$temp_file"
-    mv -f "$temp_file" "$target_file"
-}
 
 case "${1:-}" in
     on)
+        python3 "$host_config" check --quiet
         "${compose[@]}" up -d cadvisor
-        write_targets '[{"targets":["127.0.0.1:8080"],"labels":{"instance":"supermicro","collector_tier":"optional"}}]'
+        python3 "$host_config" targets cadvisor-on
         ;;
     off)
-        write_targets '[]'
+        python3 "$host_config" targets cadvisor-off
         "${compose[@]}" stop cadvisor
         ;;
     *)

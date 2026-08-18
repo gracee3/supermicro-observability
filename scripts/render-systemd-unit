@@ -16,7 +16,11 @@ service_home="$(getent passwd "$service_user" | cut -d: -f6)"
 }
 
 escape_replacement() {
-    sed 's/[\\&|]/\\&/g' <<<"$1"
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//&/\\&}"
+    value="${value//|/\\|}"
+    printf '%s\n' "$value"
 }
 
 template="$project_dir/systemd/supermicro-observability.service.in"

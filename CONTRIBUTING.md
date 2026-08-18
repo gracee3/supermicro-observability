@@ -20,6 +20,14 @@ measurement transparency, and narrow data collection.
 Run the repository checks before submitting:
 
 ```bash
+scripts/configure-host --non-interactive --apply \
+  --host-label development \
+  --platform-profile generic \
+  --disable-nvidia \
+  --disable-smart \
+  --clear-protected-devices \
+  --allow-any-root \
+  --disable-fan-metrics
 scripts/validate.sh
 ```
 

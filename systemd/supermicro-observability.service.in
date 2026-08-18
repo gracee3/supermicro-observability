@@ -2,7 +2,7 @@
 Description=Loopback-only Supermicro observability Compose stack
 Documentation=file:@PROJECT_DIR@/README.md
 Wants=docker.service
-After=docker.service supermicro-fan-control.service
+After=docker.service
 StartLimitIntervalSec=0
 
 [Service]

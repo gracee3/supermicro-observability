@@ -61,7 +61,7 @@ def panel(pid, title, kind, x, y, w, h, queries, unit="short", description=""):
     return result
 
 
-def dashboard(uid, title, tags, panels):
+def dashboard(uid, title, tags, panels, variables=None):
     return {
         "annotations": {"list": []},
         "editable": False,
@@ -73,8 +73,8 @@ def dashboard(uid, title, tags, panels):
         "panels": panels,
         "refresh": "1s",
         "schemaVersion": 41,
-        "tags": ["supermicro", *tags],
-        "templating": {"list": []},
+        "tags": ["host-observability", *tags],
+        "templating": {"list": variables or []},
         "time": {"from": "now-15m", "to": "now"},
         "timepicker": {
             "refresh_intervals": ["500ms", "1s", "2s", "5s", "10s", "30s", "1m", "5m"],
@@ -86,6 +86,25 @@ def dashboard(uid, title, tags, panels):
         "version": 1,
         "weekStart": "",
     }
+
+
+DISK_VARIABLE = {
+    "name": "disk",
+    "label": "Disk device",
+    "type": "query",
+    "datasource": DS,
+    "definition": 'label_values(node_disk_read_bytes_total{job="node-fast"}, device)',
+    "query": {
+        "query": 'label_values(node_disk_read_bytes_total{job="node-fast"}, device)',
+        "refId": "disk-variable",
+    },
+    "refresh": 1,
+    "includeAll": True,
+    "multi": True,
+    "allValue": ".*",
+    "current": {"selected": True, "text": "All", "value": "$__all"},
+    "options": [],
+}
 
 
 DASHBOARDS = {
@@ -100,10 +119,11 @@ DASHBOARDS = {
             panel(4, "GPU sample age", "stat", 20, 0, 4, 4, [("supermicro_gpu_sample_age_seconds", "age", "A")], "s"),
             panel(5, "CPU per core", "timeseries", 0, 4, 12, 8, [("100 - rate(node_cpu_seconds_total{job=\"node-fast\",mode=\"idle\"}[30s]) * 100", "CPU {{cpu}}", "A")], "percent"),
             panel(6, "GPU utilization and rolling peak", "timeseries", 12, 4, 12, 8, [("supermicro_gpu_utilization_percent", "GPU {{gpu_index}} current", "A"), ("supermicro_gpu_utilization_1s_percent_max", "GPU {{gpu_index}} peak", "B")], "percent"),
-            panel(7, "System-disk throughput", "timeseries", 0, 12, 8, 7, [("rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"nvme1n1|dm-.+\"}[30s])", "{{device}} read", "A"), ("rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"nvme1n1|dm-.+\"}[30s])", "{{device}} write", "B")], "Bps"),
+            panel(7, "Selected-disk throughput", "timeseries", 0, 12, 8, 7, [("rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"$disk\"}[30s])", "{{device}} read", "A"), ("rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"$disk\"}[30s])", "{{device}} write", "B")], "Bps"),
             panel(8, "Network throughput", "timeseries", 8, 12, 8, 7, [("rate(node_network_receive_bytes_total{job=\"node-fast\"}[30s])", "{{device}} RX", "A"), ("rate(node_network_transmit_bytes_total{job=\"node-fast\"}[30s])", "{{device}} TX", "B")], "Bps"),
             panel(9, "GPU power", "timeseries", 16, 12, 8, 7, [("supermicro_gpu_power_draw_watts", "GPU {{gpu_index}}", "A"), ("supermicro_gpu_power_draw_1s_watts_max", "GPU {{gpu_index}} 1s max", "B")], "watt"),
         ],
+        [DISK_VARIABLE],
     ),
     "cpu-memory-pressure.json": dashboard(
         "sm-cpu-memory",
@@ -121,7 +141,7 @@ DASHBOARDS = {
     ),
     "gpu-detail.json": dashboard(
         "sm-gpu",
-        "RTX 3090 Detail / One-second Peaks",
+        "NVIDIA GPU Detail / One-second Peaks",
         ["gpu"],
         [
             panel(1, "Sampler healthy", "stat", 0, 0, 4, 4, [("supermicro_gpu_sampler_up", "up", "A")], "bool"),
@@ -158,14 +178,15 @@ DASHBOARDS = {
         "Disk / Network / Storage Health",
         ["storage", "network"],
         [
-            panel(1, "Disk throughput", "timeseries", 0, 0, 12, 8, [("rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"nvme1n1|dm-.+\"}[1m])", "{{device}} read", "A"), ("rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"nvme1n1|dm-.+\"}[1m])", "{{device}} write", "B")], "Bps"),
-            panel(2, "Disk I/O latency", "timeseries", 12, 0, 12, 8, [("rate(node_disk_read_time_seconds_total{job=\"node-fast\"}[1m]) / clamp_min(rate(node_disk_reads_completed_total{job=\"node-fast\"}[1m]), 0.001)", "{{device}} read", "A"), ("rate(node_disk_write_time_seconds_total{job=\"node-fast\"}[1m]) / clamp_min(rate(node_disk_writes_completed_total{job=\"node-fast\"}[1m]), 0.001)", "{{device}} write", "B")], "s"),
+            panel(1, "Disk throughput", "timeseries", 0, 0, 12, 8, [("rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"$disk\"}[1m])", "{{device}} read", "A"), ("rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"$disk\"}[1m])", "{{device}} write", "B")], "Bps"),
+            panel(2, "Disk I/O latency", "timeseries", 12, 0, 12, 8, [("rate(node_disk_read_time_seconds_total{job=\"node-fast\",device=~\"$disk\"}[1m]) / clamp_min(rate(node_disk_reads_completed_total{job=\"node-fast\",device=~\"$disk\"}[1m]), 0.001)", "{{device}} read", "A"), ("rate(node_disk_write_time_seconds_total{job=\"node-fast\",device=~\"$disk\"}[1m]) / clamp_min(rate(node_disk_writes_completed_total{job=\"node-fast\",device=~\"$disk\"}[1m]), 0.001)", "{{device}} write", "B")], "s"),
             panel(3, "Filesystem used", "timeseries", 0, 8, 8, 7, [("1 - node_filesystem_avail_bytes{job=\"node-slow\",fstype!~\"tmpfs|ramfs\"} / node_filesystem_size_bytes{job=\"node-slow\",fstype!~\"tmpfs|ramfs\"}", "{{mountpoint}}", "A")], "percentunit"),
             panel(4, "SMART health", "stat", 8, 8, 8, 7, [("smartctl_device_smart_status", "{{device}}", "A")], "bool"),
             panel(5, "NVMe wear / temperature", "timeseries", 16, 8, 8, 7, [("smartctl_device_percentage_used", "{{device}} wear", "A"), ("smartctl_device_temperature", "{{device}} temperature", "B")], "short"),
             panel(6, "Network throughput", "timeseries", 0, 15, 12, 8, [("rate(node_network_receive_bytes_total{job=\"node-fast\"}[1m])", "{{device}} RX", "A"), ("rate(node_network_transmit_bytes_total{job=\"node-fast\"}[1m])", "{{device}} TX", "B")], "Bps"),
             panel(7, "Network errors / drops", "timeseries", 12, 15, 12, 8, [("rate(node_network_receive_errs_total{job=\"node-fast\"}[1m]) + rate(node_network_receive_drop_total{job=\"node-fast\"}[1m])", "{{device}} RX", "A"), ("rate(node_network_transmit_errs_total{job=\"node-fast\"}[1m]) + rate(node_network_transmit_drop_total{job=\"node-fast\"}[1m])", "{{device}} TX", "B")], "pps"),
         ],
+        [DISK_VARIABLE],
     ),
     "monitoring-overhead.json": dashboard(
         "sm-overhead",

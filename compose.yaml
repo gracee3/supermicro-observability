@@ -48,7 +48,7 @@ services:
       - --collector.uname
       - --collector.textfile
       - --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
-      - --collector.diskstats.device-exclude=^(ram|loop|fd|sr|zram)[0-9]+$|^nvme0n1(p[0-9]+)?$
+      - --collector.diskstats.device-exclude=${NODE_DISKSTATS_DEVICE_EXCLUDE:-^(ram|loop|fd|sr|zram)[0-9]+$}
       - --collector.netdev.device-exclude=^(lo|docker[0-9]+|veth.*|br-.*)$
       - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|erofs|sysfs|tracefs)$
@@ -58,7 +58,7 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro,rslave
       - /run/udev/data:/run/udev/data:ro
-      - /var/lib/node_exporter/textfile_collector:/var/lib/node_exporter/textfile_collector:ro
+      - ${TEXTFILE_COLLECTOR_DIR:-./runtime/textfile_collector}:/var/lib/node_exporter/textfile_collector:ro
     mem_limit: 256m
     pids_limit: 128
     cpu_shares: 128
@@ -71,7 +71,8 @@ services:
 
   fast-gpu-exporter:
     <<: *common
-    image: local/supermicro-gpu-exporter:0.1.0
+    profiles: ["nvidia"]
+    image: local/supermicro-gpu-exporter:0.2.0
     build:
       context: ./gpu-exporter
       dockerfile: Dockerfile
@@ -81,6 +82,8 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: utility
       GPU_EXPORTER_LISTEN_ADDRESS: 127.0.0.1:9836
+      GPU_EXPORTER_IDENTITY_MODE: ${GPU_IDENTITY_MODE:-alias}
+      GPU_EXPORTER_IDENTITY_SALT: ${GPU_IDENTITY_SALT:?set by configure-host}
     mem_limit: 256m
     pids_limit: 64
     cpu_shares: 256
@@ -107,8 +110,7 @@ services:
       - --query.max-concurrency=8
       - --log.level=warn
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./prometheus/file_sd:/etc/prometheus/file_sd:ro
+      - ./runtime/prometheus:/etc/prometheus:ro
       - ./data/prometheus:/prometheus
     tmpfs:
       - /tmp:size=32m,mode=1777
@@ -119,8 +121,6 @@ services:
       weight: 100
     depends_on:
       node-exporter:
-        condition: service_healthy
-      fast-gpu-exporter:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/bin/promtool", "check", "healthy", "--url=http://127.0.0.1:9090"]
@@ -173,6 +173,7 @@ services:
 
   nvml-exporter:
     <<: *common
+    profiles: ["nvidia"]
     image: utkuozdemir/nvidia_gpu_exporter:1.14.0-nvml@sha256:82acc3fc60a5a709846ea9757bbccb170fd141039fa47e5899c55fe9a60f56fe
     container_name: supermicro-nvml-exporter
     runtime: nvidia
@@ -203,19 +204,20 @@ services:
 
   smartctl-exporter:
     <<: *common
+    profiles: ["smart"]
     image: prometheuscommunity/smartctl-exporter:v0.14.0@sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1
     container_name: supermicro-smartctl-exporter
     user: "0:0"
     cap_add:
       - SYS_ADMIN
     devices:
-      - /dev/nvme1n1:/dev/nvme1n1:r
+      - ${SMART_DEVICE_HOST:-/dev/null}:/dev/smart-target:r
     command:
       - --web.listen-address=127.0.0.1:9633
       - --smartctl.interval=5m
       - --smartctl.rescan=0s
       - --no-smartctl.scan
-      - --smartctl.device=/dev/nvme1n1
+      - --smartctl.device=/dev/smart-target;${SMART_DEVICE_TYPE:-auto}
       - --log.level=warn
     mem_limit: 256m
     pids_limit: 64
