@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+data/prometheus/**/*
+data/grafana/**/*
+gpu-exporter/target/
+backups/**/*
+!data/prometheus/.gitkeep
+!data/grafana/.gitkeep
+!backups/.gitkeep
+*.tmp
+*.swp
+.DS_Store

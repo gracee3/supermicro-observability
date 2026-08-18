@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: Supermicro
+    orgId: 1
+    folder: Supermicro
+    folderUid: supermicro
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

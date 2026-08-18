@@ -1,0 +1,12 @@
+[package]
+name = "supermicro-gpu-exporter"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Persistent high-frequency nvidia-smi sampler with Prometheus output"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

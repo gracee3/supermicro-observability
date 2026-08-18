@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the version you evaluated."
+title: "Supermicro Observability"
+abstract: >-
+  A loopback-only Prometheus and Grafana monitoring stack for a Supermicro
+  X11SPA-TF workstation with two NVIDIA RTX 3090 GPUs, including a persistent
+  high-frequency GPU sampler and cached fan-controller metrics.
+type: software
+authors:
+  - name: "gracee3"
+version: 0.1.0
+date-released: 2026-08-17
+repository-code: "https://github.com/gracee3/supermicro-observability"
+url: "https://github.com/gracee3/supermicro-observability"
+license: MIT
+keywords:
+  - observability
+  - prometheus
+  - grafana
+  - nvidia
+  - supermicro
+  - gpu-monitoring

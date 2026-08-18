@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+project_dir="${1:-}"
+service_user="${2:-}"
+[[ -d "$project_dir" && -n "$service_user" ]] || {
+    echo "usage: render-systemd-unit PROJECT_DIR SERVICE_USER" >&2
+    exit 2
+}
+
+service_group="$(id -gn "$service_user")"
+service_home="$(getent passwd "$service_user" | cut -d: -f6)"
+[[ -n "$service_home" ]] || {
+    echo "could not determine home directory for $service_user" >&2
+    exit 1
+}
+
+escape_replacement() {
+    sed 's/[\\&|]/\\&/g' <<<"$1"
+}
+
+template="$project_dir/systemd/supermicro-observability.service.in"
+sed \
+    -e "s|@PROJECT_DIR@|$(escape_replacement "$project_dir")|g" \
+    -e "s|@SERVICE_USER@|$(escape_replacement "$service_user")|g" \
+    -e "s|@SERVICE_GROUP@|$(escape_replacement "$service_group")|g" \
+    -e "s|@SERVICE_HOME@|$(escape_replacement "$service_home")|g" \
+    -e "s|@CARGO_BIN_DIR@|$(escape_replacement "$service_home/.cargo/bin")|g" \
+    "$template"

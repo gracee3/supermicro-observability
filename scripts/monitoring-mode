@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+project_dir="$(cd -- "$script_dir/.." && pwd -P)"
+compose=(docker compose --project-directory "$project_dir" --file "$project_dir/compose.yaml")
+
+usage() {
+    echo "usage: monitoring-mode normal|benchmark|off" >&2
+    exit 2
+}
+
+check_storage_guardrails() {
+    local protected_ro system_source
+    protected_ro="$(lsblk -dn -o RO /dev/nvme0n1 2>/dev/null | tr -d '[:space:]')"
+    [[ "$protected_ro" == "1" ]] || {
+        echo "refusing to start: protected /dev/nvme0n1 is not read-only" >&2
+        exit 1
+    }
+    if findmnt -rn -S /dev/nvme0n1 >/dev/null || findmnt -rn -S /dev/nvme0n1p1 >/dev/null; then
+        echo "refusing to start: protected /dev/nvme0n1 is mounted" >&2
+        exit 1
+    fi
+    system_source="$(findmnt -n -o SOURCE /)"
+    [[ "$system_source" == /dev/mapper/* ]] || {
+        echo "refusing to start: unexpected root source $system_source" >&2
+        exit 1
+    }
+    [[ -b /dev/nvme1n1 ]] || {
+        echo "refusing to start: expected system disk /dev/nvme1n1 is absent" >&2
+        exit 1
+    }
+}
+
+ensure_environment() {
+    if [[ ! -f "$project_dir/.env" ]]; then
+        local temp_file
+        umask 077
+        temp_file="$(mktemp "$project_dir/.env.XXXXXX")"
+        {
+            printf 'GRAFANA_ADMIN_PASSWORD='
+            openssl rand -hex 32
+            printf 'OBSERVABILITY_UID=%s\n' "$(id -u)"
+            printf 'OBSERVABILITY_GID=%s\n' "$(id -g)"
+        } >"$temp_file"
+        chmod 0600 "$temp_file"
+        mv -f "$temp_file" "$project_dir/.env"
+    fi
+    [[ "$(stat -c '%a' "$project_dir/.env")" == "600" ]] || {
+        echo "refusing to start: $project_dir/.env must have mode 0600" >&2
+        exit 1
+    }
+}
+
+build_fast_exporter() {
+    local binary="$project_dir/gpu-exporter/target/x86_64-unknown-linux-musl/release/supermicro-gpu-exporter"
+    local rebuild=0
+    if ! rustup target list --installed | grep -qx x86_64-unknown-linux-musl; then
+        rustup target add x86_64-unknown-linux-musl
+        rebuild=1
+    fi
+    if [[ ! -x "$binary" ]] || \
+        find "$project_dir/gpu-exporter/src" "$project_dir/gpu-exporter/Cargo.toml" \
+            -type f -newer "$binary" -print -quit | grep -q .; then
+        rebuild=1
+    fi
+    if (( rebuild )); then
+        cargo build \
+            --quiet \
+            --release \
+            --target x86_64-unknown-linux-musl \
+            --manifest-path "$project_dir/gpu-exporter/Cargo.toml"
+    fi
+    if (( rebuild )) || ! docker image inspect local/supermicro-gpu-exporter:0.1.0 >/dev/null 2>&1; then
+        "${compose[@]}" build --quiet fast-gpu-exporter
+    fi
+}
+
+mode="${1:-}"
+case "$mode" in
+    normal)
+        check_storage_guardrails
+        ensure_environment
+        build_fast_exporter
+        "${compose[@]}" up -d \
+            node-exporter fast-gpu-exporter prometheus grafana nvml-exporter smartctl-exporter
+        ;;
+    benchmark)
+        check_storage_guardrails
+        ensure_environment
+        build_fast_exporter
+        "${compose[@]}" --profile containers stop grafana nvml-exporter smartctl-exporter cadvisor
+        "${compose[@]}" up -d node-exporter fast-gpu-exporter prometheus
+        ;;
+    off)
+        ensure_environment
+        "${compose[@]}" --profile containers stop
+        ;;
+    *)
+        usage
+        ;;
+esac
