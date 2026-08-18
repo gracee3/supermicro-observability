@@ -5,12 +5,12 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 project_dir="$(cd -- "$script_dir/.." && pwd -P)"
 duration="${1:-300}"
 interval=5
-[[ "$duration" =~ ^[0-9]+$ ]] && (( duration >= interval )) || {
+if [[ ! "$duration" =~ ^[0-9]+$ ]] || (( duration < interval )); then
     echo "usage: observer-check.sh [duration-seconds>=5]" >&2
     exit 2
-}
+fi
 
-mapfile -t containers < <(docker compose --project-directory "$project_dir" --file "$project_dir/compose.yaml" ps -q)
+mapfile -t containers < <(docker compose --project-directory "$project_dir" --file "$project_dir/compose.yaml" --profile nvidia --profile smart --profile containers ps -q)
 (( ${#containers[@]} > 0 )) || {
     echo "no monitoring containers are running" >&2
     exit 1

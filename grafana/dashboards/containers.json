@@ -372,7 +372,7 @@
   "refresh": "1s",
   "schemaVersion": 41,
   "tags": [
-    "supermicro",
+    "host-observability",
     "containers",
     "optional"
   ],

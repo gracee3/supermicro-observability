@@ -1,0 +1,113 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 1s
+  external_labels:
+    host: "@HOST_LABEL@"
+
+scrape_configs:
+  - job_name: prometheus
+    scrape_interval: 5s
+    scrape_timeout: 2s
+    static_configs:
+      - targets: ["127.0.0.1:9090"]
+        labels:
+          instance: "@HOST_LABEL@"
+
+  - job_name: node-fast
+    scrape_interval: 1s
+    scrape_timeout: 750ms
+    params:
+      "collect[]":
+        - cpu
+        - meminfo
+        - vmstat
+        - pressure
+        - diskstats
+        - netdev
+        - softnet
+        - schedstat
+    static_configs:
+      - targets: ["127.0.0.1:9100"]
+        labels:
+          instance: "@HOST_LABEL@"
+          collector_tier: fast
+
+  - job_name: node-slow
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    params:
+      "collect[]":
+        - filesystem
+        - hwmon
+        - thermal_zone
+        - edac
+        - nvme
+        - cpufreq
+        - uname
+        - textfile
+    static_configs:
+      - targets: ["127.0.0.1:9100"]
+        labels:
+          instance: "@HOST_LABEL@"
+          collector_tier: slow
+    metric_relabel_configs:
+      - source_labels: [device]
+        regex: "@PROTECTED_DEVICE_REGEX@"
+        action: drop
+      - action: labeldrop
+        regex: "serial|wwid"
+
+  - job_name: gpu-fast
+    scrape_interval: 500ms
+    scrape_timeout: 250ms
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/gpu-fast.json"]
+        refresh_interval: 5s
+    relabel_configs:
+      - target_label: instance
+        replacement: "@HOST_LABEL@"
+      - target_label: collector_tier
+        replacement: fast
+
+  - job_name: gpu-nvml
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/gpu-nvml.json"]
+        refresh_interval: 5s
+    relabel_configs:
+      - target_label: instance
+        replacement: "@HOST_LABEL@"
+      - target_label: collector_tier
+        replacement: slow
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "uuid|serial|pci_bus_id|pci_sub_device_id"
+
+  - job_name: smartctl
+    scrape_interval: 5m
+    scrape_timeout: 30s
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/smartctl.json"]
+        refresh_interval: 5s
+    relabel_configs:
+      - target_label: instance
+        replacement: "@HOST_LABEL@"
+      - target_label: collector_tier
+        replacement: storage
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: "serial_number"
+
+  - job_name: cadvisor
+    scrape_interval: 5s
+    scrape_timeout: 3s
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/cadvisor.json"]
+        refresh_interval: 5s
+    relabel_configs:
+      - target_label: instance
+        replacement: "@HOST_LABEL@"
+      - target_label: collector_tier
+        replacement: optional

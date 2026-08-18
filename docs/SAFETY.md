@@ -1,48 +1,53 @@
 # Deployment safety boundaries
 
-## Fan control
+## Fail-closed optional hardware access
 
-The fan controller is deliberately native, independent, and safety-critical.
-This repository consumes a cached Prometheus textfile that the controller writes
-from its existing IPMI sample. It must not launch a second polling loop or alter
-the controller's curves, cadence, header mapping, stop hook, or fail-safe mode.
-
-Before installing fan integration on any host:
-
-1. Physically identify every fan header and direction.
-2. Establish safe measured RPM floors and sensor mappings.
-3. Review BMC raw commands for the exact board and firmware.
-4. Confirm controller stop selects a safe BMC mode.
-5. Keep an out-of-band console and rollback path available.
-
-The installer briefly restarts the fan service only when its installed source or
-unit differs. During the stop interval the deployed controller selects BMC Full
-mode. Do not run the installer unattended on an unverified machine.
+The committed defaults enable no NVIDIA runtime, SMART device, protected-device
+policy, or external fan metrics. `configure-host` requires explicit selection
+and stores persistent device identities only in ignored `.env`. `doctor` checks
+the resulting policy before startup.
 
 ## Storage
 
-The target profile assumes:
+SMART accepts one explicitly selected whole disk and disables automatic scans.
+The host path is resolved to `/dev/disk/by-id/...` and mapped read-only to the
+fixed container path `/dev/smart-target`. A SMART device must not also be listed
+as protected.
 
-- `/dev/nvme1n1` is the system disk and sole SMART target; and
-- `/dev/nvme0n1` is protected, read-only, and unmounted.
+Every configured protected disk must be read-only and have no mounted descendant.
+It is never passed to a container, and its resolved kernel name is excluded from
+node diskstats. The optional mapped-root rule is a host policy, not a universal
+assumption.
 
-Startup refuses to proceed when the protected device is writable or mounted.
-Compose passes only the system disk into `smartctl_exporter`, with scanning
-disabled. Verify `lsblk` and `findmnt` live before adapting either identity.
-Never use the target configuration as evidence that another host numbers its
-devices the same way.
+Before selecting a disk, verify its model, size, topology, mount state, and role
+using live read-only tools. The configurator never mounts, unlocks, repairs,
+partitions, formats, images, or writes a device.
+
+## Fan control
+
+Monitoring does not validate a cooling policy. The generic stack can consume a
+cached [fan metrics contract](FAN-METRICS.md), but normal operation, installation,
+rollback, and monitoring modes never manage a controller or poll IPMI.
+
+Fan-control integration requires separate review of the exact board/BMC command
+protocol, firmware, physical headers, fan direction, measured RPM floors,
+cooling hardware, sensor names, curves, stop hook, and fail-safe behavior. A DMI
+platform match does not make fan curves transferable.
+
+The optional legacy integration command requires a confirmation flag that names
+its restart behavior. Keep out-of-band console access and an independently
+verified safe stop mode before using it.
 
 ## Remote access and listeners
 
-The stack changes no route, firewall, SSH daemon, or interface. Host networking
-is used solely for accurate metrics and every service explicitly binds to
-`127.0.0.1`. After changes, verify the listening sockets rather than assuming a
-container port declaration supplies isolation.
+The stack changes no route, firewall, SSH daemon, or network interface. Host
+networking is used for accurate metrics, and every HTTP service binds explicitly
+to `127.0.0.1`. Verify sockets after deployment rather than assuming container
+metadata supplies isolation.
 
 ## Resource limits and rollback
 
 Prometheus is capped at 14 days and 12 GB. Containers have memory, process,
-CPU-share, and log-rotation constraints. `monitoring-mode off` leaves the fan
-controller untouched. `rollback-system.sh` stops and disables the startup unit,
-runs Compose down without deleting project data, and restores the fixed fan
-controller backups when present.
+CPU-share, and log-rotation constraints. `monitoring-mode off` stops monitoring
+only. `rollback-system.sh` disables the monitoring unit and removes containers
+without deleting project data or touching fan control.

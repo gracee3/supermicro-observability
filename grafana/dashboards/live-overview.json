@@ -376,7 +376,7 @@
     },
     {
       "id": 7,
-      "title": "System-disk throughput",
+      "title": "Selected-disk throughput",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -424,7 +424,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"nvme1n1|dm-.+\"}[30s])",
+          "expr": "rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"$disk\"}[30s])",
           "legendFormat": "{{device}} read",
           "range": true,
           "refId": "A"
@@ -435,7 +435,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"nvme1n1|dm-.+\"}[30s])",
+          "expr": "rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"$disk\"}[30s])",
           "legendFormat": "{{device}} write",
           "range": true,
           "refId": "B"
@@ -582,11 +582,36 @@
   "refresh": "1s",
   "schemaVersion": 41,
   "tags": [
-    "supermicro",
+    "host-observability",
     "live"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "disk",
+        "label": "Disk device",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(node_disk_read_bytes_total{job=\"node-fast\"}, device)",
+        "query": {
+          "query": "label_values(node_disk_read_bytes_total{job=\"node-fast\"}, device)",
+          "refId": "disk-variable"
+        },
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      }
+    ]
   },
   "time": {
     "from": "now-15m",

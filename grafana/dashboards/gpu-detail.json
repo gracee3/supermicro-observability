@@ -786,7 +786,7 @@
   "refresh": "1s",
   "schemaVersion": 41,
   "tags": [
-    "supermicro",
+    "host-observability",
     "gpu"
   ],
   "templating": {
@@ -819,7 +819,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "RTX 3090 Detail / One-second Peaks",
+  "title": "NVIDIA GPU Detail / One-second Peaks",
   "uid": "sm-gpu",
   "version": 1,
   "weekStart": ""
