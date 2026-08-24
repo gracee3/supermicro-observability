@@ -14,6 +14,8 @@ monitoring network or hardware boundary.
   private atomic report output.
 - Allowlisted aggregate system, GPU, thermal, monitoring-health, and benchmark
   profiles with identifier suppression and locally salted GPU re-aliasing.
+- A combined custom Grafana dashboard for CPU, PSI, memory, storage, network,
+  GPU, cached fan-controller, scrape-duration, and exporter-resource telemetry.
 - Checkout-independent installation of the CLI, adapter, schema, examples, and
   documentation, with no-`sudo` observation commands.
 

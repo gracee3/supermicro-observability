@@ -14,6 +14,8 @@ All notable changes are documented here. Versions follow Semantic Versioning.
   report output, a versioned response schema, and synthetic output example.
 - Added a local newline-delimited JSON-RPC STDIO MCP adapter with six read-only
   tools and local, installed, generic-client, and SSH setup guidance.
+- Added a combined custom Grafana dashboard spanning host, GPU, cached fan, and
+  exporter-overhead views with the existing selectable-disk control.
 - Added isolated Prometheus fixtures, privacy/boundary unit tests, and MCP
   transcript tests.
 
