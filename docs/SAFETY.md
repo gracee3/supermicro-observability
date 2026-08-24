@@ -41,9 +41,11 @@ verified safe stop mode before using it.
 ## Remote access and listeners
 
 The stack changes no route, firewall, SSH daemon, or network interface. Host
-networking is used for accurate metrics, and every HTTP service binds explicitly
-to `127.0.0.1`. Verify sockets after deployment rather than assuming container
-metadata supplies isolation.
+networking is used for accurate metrics. Prometheus and every collector bind
+explicitly to `127.0.0.1`; Grafana defaults to loopback but may be bound to one
+exact private host address for a trusted direct connection. Wildcard and public
+Grafana binds are rejected. Verify sockets after deployment rather than assuming
+container metadata supplies isolation.
 
 ## Resource limits and rollback
 

@@ -1,10 +1,47 @@
 # Supermicro observability
 
-Loopback-only, containerized host monitoring with a safe generic core and
-explicit optional integrations for NVIDIA GPUs, a selected SMART device,
-cached fan-controller metrics, and cAdvisor. The project began on a Supermicro
-X11SPA-TF workstation, but committed configuration contains no real disk, GPU,
-fan-header, or host identity.
+Containerized host monitoring with a safe generic core and explicit optional
+integrations for NVIDIA GPUs, a selected SMART device, cached fan-controller
+metrics, and cAdvisor. The project began on a Supermicro X11SPA-TF workstation,
+but committed configuration contains no real disk, GPU, network, fan-header, or
+host identity.
+
+## Install and run on demand
+
+Prerequisites are Docker Engine with Compose, Python 3, GNU Make, and standard
+Linux host utilities. Clone the repository and run the interactive installer:
+
+```bash
+git clone git@github.com:gracee3/supermicro-observability.git
+cd supermicro-observability
+make install
+```
+
+The installer asks which optional collectors and host safety policies to use.
+For Grafana, keep `127.0.0.1` for SSH-tunnel-only access or enter the host's
+private address on a trusted direct link. It then:
+
+- generates a random Grafana administrator password;
+- writes the private host profile to the ignored `.env` file;
+- prints the password in the terminal and saves it to the explicitly ignored
+  `runtime/secrets/grafana-admin-password` file with mode `0600`; and
+- installs the systemd unit without starting it and leaves it disabled at boot.
+
+The terminal display may remain in shell or tmux scrollback. Retrieve the saved
+password later with `make password`.
+
+Start and stop monitoring only when wanted:
+
+```bash
+make start
+make status
+make stop
+```
+
+From a directly connected laptop, open `http://MONITORING_HOST:3000` and sign in
+as `admin` with the generated password. `MONITORING_HOST` is the private address
+entered during installation. Port `3000` is Grafana's conventional port; all
+collector and Prometheus endpoints remain bound to host loopback.
 
 > [!CAUTION]
 > Monitoring is portable; physical cooling policy is not. This repository does
@@ -33,22 +70,47 @@ It does not provide or change fan curves. A dated, redacted example deployment
 is documented separately in
 [the X11SPA-TF dual-GPU case study](docs/deployments/x11spa-tf-dual-rtx3090.md).
 
-## Quick start
+## Technical architecture
 
-Prerequisites are Docker Engine with Compose, Python 3, and standard Linux host
-utilities. NVIDIA Container Toolkit, `nvidia-smi`, Rust, MUSL, and currently an
-x86_64 host are required only when the custom NVIDIA profile is enabled.
+Docker Compose runs the services with host networking so host metrics remain
+accurate. Only Grafana may be bound to a configured private host address. The
+data plane stays on `127.0.0.1`: exporters expose local metrics, Prometheus
+scrapes and stores them, and Grafana queries Prometheus through its provisioned
+datasource.
 
-```bash
-git clone git@github.com:gracee3/supermicro-observability.git
-cd supermicro-observability
-scripts/configure-host --interactive --apply
-scripts/doctor
-scripts/validate.sh
-scripts/monitoring-mode normal
+| What is observed | Collector | How it is collected | Default cadence |
+|---|---|---|---:|
+| CPU, memory, pressure, filesystems, disks, network, thermals, hwmon and EDAC | node_exporter | Split fast and slow Prometheus scrapes against a least-collector listener | 1 s / 15 s |
+| GPU utilization, clocks, power, temperature and rolling aggregates | custom Rust GPU exporter | One persistent `nvidia-smi --loop-ms=250` sampler keyed internally by GPU UUID | 250 ms sample / 500 ms scrape |
+| Broader GPU inventory, health and XID data | NVIDIA NVML exporter | NVML collector with identifying labels dropped before Prometheus storage | 15 s |
+| One explicitly selected whole disk | SMART exporter | Read-only mapping to a neutral container device; automatic scanning disabled | 5 min |
+| Existing fan-controller telemetry | node_exporter textfile collector | Reads a cached metrics file; never polls IPMI or controls fans | Producer-defined |
+| Container resource use | cAdvisor | Explicit opt-in with process, labels and high-cardinality metrics constrained | 5 s |
+| Monitoring health and overhead | Prometheus and provisioned dashboards | Target health, scrape timing and stack resource dashboards | Dashboard-dependent |
+
+Prometheus retains at most 14 days or 12 GB. Grafana and Prometheus use ignored
+project-local bind mounts for persistent data. Containers have memory, process,
+CPU-share, read-only-filesystem, capability and log-rotation constraints.
+
+```text
+host sensors and kernel interfaces
+        │
+        ├── node_exporter ────────────┐
+        ├── custom/NVML GPU exporters ┤
+        ├── optional SMART exporter ──┼──> Prometheus ──> Grafana :3000
+        ├── optional fan textfile ─────┤       127.0.0.1
+        └── optional cAdvisor ─────────┘
 ```
 
-`configure-host` previews choices unless `--apply` is supplied. It writes `.env`
+No process IDs, command lines, or per-process GPU metrics are collected. GPU
+identity defaults to a stable salted alias. Disabled optional collectors use
+empty file-discovery targets rather than producing permanent scrape failures.
+
+## Explicit non-interactive configuration
+
+NVIDIA Container Toolkit, `nvidia-smi`, Rust, MUSL, and currently an x86_64 host
+are required only when the custom NVIDIA profile is enabled. `configure-host`
+previews choices unless `--apply` is supplied. It writes `.env`
 atomically with mode `0600`, generates a random Grafana password, resolves whole
 disks to stable by-id paths, and renders local Prometheus configuration. It does
 not mount, unlock, scan, or write a selected device.
@@ -73,8 +135,9 @@ and fan-textfile examples. Existing v0.1 deployments should follow the
 
 ## Access and endpoints
 
-All listeners bind explicitly to `127.0.0.1`. Reach Grafana through an existing
-trusted SSH connection:
+Grafana binds to `GRAFANA_HTTP_ADDR`, which defaults to `127.0.0.1` and accepts
+only a loopback or private IP address. With the loopback default, reach it
+through an existing trusted SSH connection:
 
 ```bash
 ssh -L 3000:127.0.0.1:3000 USER@MONITORING_HOST
@@ -82,9 +145,9 @@ ssh -L 3000:127.0.0.1:3000 USER@MONITORING_HOST
 
 Then open `http://127.0.0.1:3000`.
 
-| Service | Loopback endpoint | Collection interval | Feature |
+| Service | Host endpoint | Collection interval | Feature |
 |---|---:|---:|---|
-| Grafana | `127.0.0.1:3000` | 1 s dashboard refresh | core |
+| Grafana | `${GRAFANA_HTTP_ADDR}:3000` | 1 s dashboard refresh | core |
 | Prometheus | `127.0.0.1:9090` | varies by job | core |
 | node_exporter | `127.0.0.1:9100` | 1 s fast / 15 s slow | core |
 | persistent GPU sampler | `127.0.0.1:9836` | 250 ms sample / 500 ms scrape | NVIDIA |
@@ -121,11 +184,16 @@ targets do not create permanent Prometheus scrape failures.
 
 ## Native startup and fan integration
 
-Install only the monitoring systemd unit with:
+`make install` installs the monitoring systemd unit disabled at boot and does
+not start it. It can also be installed directly after host configuration with:
 
 ```bash
 sudo ./scripts/install-system.sh
 ```
+
+The unit is intentionally not enabled at boot. Reinstalling does not stop an
+already-running stack. Use `make start` and `make stop`, or the equivalent
+`sudo systemctl start|stop supermicro-observability` commands.
 
 Rollback disables the unit and removes containers without deleting bind-mounted
 data:

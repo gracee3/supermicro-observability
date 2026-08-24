@@ -1,5 +1,5 @@
 [Unit]
-Description=Loopback-only Supermicro observability Compose stack
+Description=Supermicro observability Compose stack
 Documentation=file:@PROJECT_DIR@/README.md
 Wants=docker.service
 After=docker.service

@@ -34,6 +34,7 @@ class HostConfigTests(unittest.TestCase):
     def test_defaults_are_fail_closed(self):
         config = host_config.defaults({})
         self.assertEqual(config["ENABLE_NVIDIA_GPU"], "false")
+        self.assertEqual(config["GRAFANA_HTTP_ADDR"], "127.0.0.1")
         self.assertEqual(config["GPU_IDENTITY_MODE"], "alias")
         self.assertEqual(config["ENABLE_SMART"], "false")
         self.assertEqual(config["FAN_METRICS_MODE"], "disabled")
@@ -69,6 +70,20 @@ class HostConfigTests(unittest.TestCase):
         config["HOST_LABEL"] = 'bad"label'
         with self.assertRaises(host_config.ConfigError):
             host_config.validate_scalar_config(config)
+
+    def test_grafana_address_rejects_public_or_wildcard_bind(self):
+        config = host_config.defaults({})
+        for address in ("0.0.0.0", "8.8.8.8", "not-an-address"):
+            with self.subTest(address=address), self.assertRaises(host_config.ConfigError):
+                config["GRAFANA_HTTP_ADDR"] = address
+                host_config.validate_scalar_config(config)
+
+    def test_grafana_address_accepts_loopback_and_private_bind(self):
+        config = host_config.defaults({})
+        for address in ("127.0.0.1", "192.0.2.10"):
+            with self.subTest(address=address):
+                config["GRAFANA_HTTP_ADDR"] = address
+                host_config.validate_scalar_config(config)
 
 
 if __name__ == "__main__":

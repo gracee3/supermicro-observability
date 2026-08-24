@@ -5,6 +5,10 @@ It reads and replaces the ignored `.env` atomically, preserves or generates the
 Grafana secret, and renders ignored runtime files under `runtime/`. Do not copy a
 different machine's `.env`.
 
+Grafana defaults to `127.0.0.1:3000`. Interactive configuration can select an
+exact private host address for a trusted directly connected client. Wildcard and
+public binds are rejected; Prometheus and every collector remain loopback-only.
+
 ## Safe generic profile
 
 ```bash

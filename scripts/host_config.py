@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -23,6 +24,7 @@ RUNTIME = PROJECT / "runtime"
 PROM_RUNTIME = RUNTIME / "prometheus"
 FILE_SD = PROM_RUNTIME / "file_sd"
 LOCAL_TEXTFILE = RUNTIME / "textfile_collector"
+PASSWORD_FILE = RUNTIME / "secrets" / "grafana-admin-password"
 
 BASE_DISK_EXCLUDE = r"^(ram|loop|fd|sr|zram)[0-9]+$"
 VALID_KEY = re.compile(r"^[A-Z][A-Z0-9_]*$")
@@ -33,6 +35,7 @@ FALSE_VALUES = {"0", "false", "no", "off"}
 
 CONFIG_ORDER = [
     "GRAFANA_ADMIN_PASSWORD",
+    "GRAFANA_HTTP_ADDR",
     "OBSERVABILITY_UID",
     "OBSERVABILITY_GID",
     "HOST_LABEL",
@@ -102,6 +105,7 @@ def defaults(existing: dict[str, str]) -> dict[str, str]:
     return {
         **existing,
         "GRAFANA_ADMIN_PASSWORD": password,
+        "GRAFANA_HTTP_ADDR": existing.get("GRAFANA_HTTP_ADDR", "127.0.0.1"),
         "OBSERVABILITY_UID": existing.get("OBSERVABILITY_UID", str(os.getuid())),
         "OBSERVABILITY_GID": existing.get("OBSERVABILITY_GID", str(os.getgid())),
         "HOST_LABEL": existing.get("HOST_LABEL", "localhost"),
@@ -125,6 +129,14 @@ def defaults(existing: dict[str, str]) -> dict[str, str]:
 
 
 def validate_scalar_config(config: dict[str, str]) -> None:
+    try:
+        grafana_address = ipaddress.ip_address(config["GRAFANA_HTTP_ADDR"])
+    except ValueError as error:
+        raise ConfigError("GRAFANA_HTTP_ADDR must be an IP address") from error
+    if grafana_address.is_unspecified or not (
+        grafana_address.is_loopback or grafana_address.is_private
+    ):
+        raise ConfigError("GRAFANA_HTTP_ADDR must be a loopback or private IP address")
     label = config["HOST_LABEL"]
     if not VALID_LABEL.fullmatch(label):
         raise ConfigError("HOST_LABEL may contain only letters, digits, dot, underscore, and dash")
@@ -278,6 +290,10 @@ def write_env(config: dict[str, str]) -> None:
     atomic_write(ENV_FILE, "\n".join(lines) + "\n", 0o600)
 
 
+def write_password_file(config: dict[str, str]) -> None:
+    atomic_write(PASSWORD_FILE, config["GRAFANA_ADMIN_PASSWORD"] + "\n", 0o600)
+
+
 def render_prometheus(config: dict[str, str]) -> None:
     template = PROM_TEMPLATE.read_text(encoding="utf-8")
     rendered = template.replace("@HOST_LABEL@", config["HOST_LABEL"]).replace(
@@ -372,6 +388,9 @@ def configure(args: argparse.Namespace) -> int:
         if not sys.stdin.isatty():
             raise ConfigError("--interactive requires a terminal")
         config["HOST_LABEL"] = ask("Prometheus host label", config["HOST_LABEL"])
+        config["GRAFANA_HTTP_ADDR"] = ask(
+            "Grafana listen address", config["GRAFANA_HTTP_ADDR"]
+        )
         config["PLATFORM_PROFILE"] = ask(
             "Platform profile (generic or supermicro-x11spa-tf)", config["PLATFORM_PROFILE"]
         )
@@ -403,6 +422,8 @@ def configure(args: argparse.Namespace) -> int:
 
     if args.host_label is not None:
         config["HOST_LABEL"] = args.host_label
+    if args.grafana_http_addr is not None:
+        config["GRAFANA_HTTP_ADDR"] = args.grafana_http_addr
     if args.platform_profile is not None:
         config["PLATFORM_PROFILE"] = args.platform_profile
     if args.enable_nvidia:
@@ -457,6 +478,7 @@ def configure(args: argparse.Namespace) -> int:
         return 0
 
     write_env(config)
+    write_password_file(config)
     prepare_runtime(config)
     if not args.quiet:
         print(f"Configured host profile {config['HOST_LABEL']!r} with mode 0600.")
@@ -467,6 +489,8 @@ def configure(args: argparse.Namespace) -> int:
             f"protected_devices={len(protected_devices(config))}."
         )
         print("Run scripts/doctor before starting the stack.")
+        print(f"Grafana admin password: {config['GRAFANA_ADMIN_PASSWORD']}")
+        print(f"Password saved to {PASSWORD_FILE} (mode 0600).")
     return 0
 
 
@@ -603,6 +627,7 @@ def parser() -> argparse.ArgumentParser:
     configure_parser.add_argument("--non-interactive", action="store_true")
     configure_parser.add_argument("--show-sensitive", action="store_true")
     configure_parser.add_argument("--host-label")
+    configure_parser.add_argument("--grafana-http-addr")
     configure_parser.add_argument("--platform-profile", choices=sorted(VALID_PROFILES))
     nvidia = configure_parser.add_mutually_exclusive_group()
     nvidia.add_argument("--enable-nvidia", action="store_true")
@@ -635,6 +660,7 @@ def parser() -> argparse.ArgumentParser:
 
     services_parser = commands.add_parser("services")
     services_parser.add_argument("mode", choices=["normal", "benchmark"])
+    commands.add_parser("password")
     return root
 
 
@@ -656,6 +682,13 @@ def main() -> int:
             return 0
         if args.command == "services":
             print("\n".join(services(config, args.mode)))
+            return 0
+        if args.command == "password":
+            if not ENV_FILE.exists():
+                raise ConfigError(".env is missing; run scripts/configure-host first")
+            write_password_file(config)
+            print(config["GRAFANA_ADMIN_PASSWORD"])
+            print(f"Password file: {PASSWORD_FILE}", file=sys.stderr)
             return 0
     except (ConfigError, OSError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
         print(f"configuration error: {error}", file=sys.stderr)

@@ -1,9 +1,10 @@
 # Contributor and agent guidance
 
-This repository provides loopback-only host observability with explicit generic
-configuration and optional NVIDIA, SMART, fan-metric, and cAdvisor integrations.
-It observes; it does not define universal hardware policy, infer device roles,
-or manage normal fan control.
+This repository provides loopback-only host metrics with Grafana optionally
+bound to one exact private address, plus explicit generic configuration and
+optional NVIDIA, SMART, fan-metric, and cAdvisor integrations. It observes; it
+does not define universal hardware policy, infer device roles, or manage normal
+fan control.
 
 Before changing implementation, read `README.md`, `CONTRIBUTING.md`,
 `docs/SAFETY.md`, `docs/CONFIGURATION.md`, and `docs/METHODOLOGY.md`. Read the
@@ -28,9 +29,10 @@ without separately reviewing their exact effects and authorization.
 - Never commit credentials, `.env`, host or device identities, GPU UUIDs,
   serials, addresses, live databases, process details, raw host captures, or
   unbounded metric labels. Examples must be visibly synthetic.
-- Preserve loopback listeners, fail-closed optional collectors, stable explicit
-  device selection, protected-device exclusion, resource bounds, and separation
-  from fan control. Never generalize a curve or device assumption from one host.
+- Preserve loopback metrics listeners, the exact-private-address-only Grafana
+  policy, fail-closed optional collectors, stable explicit device selection,
+  protected-device exclusion, resource bounds, and separation from fan control.
+  Never generalize a curve or device assumption from one host.
 - Keep generated configuration, dashboards, Compose, migrations, third-party
   notices, measurement limits, and source provenance aligned.
 - Use a focused feature branch and sign off commits as required by

@@ -26,8 +26,9 @@ install -o root -g root -m 0644 \
     /etc/systemd/system/supermicro-observability.service
 systemd-analyze verify /etc/systemd/system/supermicro-observability.service
 systemctl daemon-reload
-systemctl enable supermicro-observability.service
-systemctl start supermicro-observability.service
-systemctl is-active --quiet supermicro-observability.service
+systemctl disable supermicro-observability.service >/dev/null 2>&1 || true
 
-echo "Monitoring startup installed. Fan-controller files and services were not modified."
+echo "Monitoring service installed and disabled at boot; it was not started."
+echo "An already-running monitoring stack was left running."
+echo "Start it on demand with: sudo systemctl start supermicro-observability"
+echo "Fan-controller files and services were not modified."
