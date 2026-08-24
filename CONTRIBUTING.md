@@ -11,9 +11,10 @@ measurement transparency, and narrow data collection.
    host. Explain the tested hardware and operating conditions.
 3. Declare generated code, AI assistance, copied material, and third-party
    sources. Contributors remain responsible for accuracy, licensing, and review.
-4. Preserve loopback-only listeners, the protected-device exclusion, and the
-   native controller's independent fail-safe behavior unless a change explicitly
-   documents and validates a safer replacement.
+4. Preserve loopback-only metrics listeners, the exact-private-address-only
+   Grafana policy, the protected-device exclusion, and the native controller's
+   independent fail-safe behavior unless a change explicitly documents and
+   validates a safer replacement.
 5. Add tests for parser, restart, stale-data, or configuration behavior affected
    by the change.
 

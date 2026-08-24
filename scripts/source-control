@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+project_dir="$(cd -- "$script_dir/.." && pwd -P)"
+config_file="$project_dir/.env"
+compose=(
+    docker compose
+    --env-file "$config_file"
+    --project-directory "$project_dir"
+    --file "$project_dir/compose.yaml"
+    --profile nvidia
+    --profile smart
+    --profile containers
+)
+
+usage() {
+    echo "usage: source-control configure|run|stop|status|password|bind ADDRESS" >&2
+    exit 2
+}
+
+reject_active_system_install() {
+    if systemctl is-active --quiet supermicro-observability.service 2>/dev/null; then
+        echo "the installed monitoring service is active; use sudo supermicro-observability instead" >&2
+        exit 1
+    fi
+}
+
+require_config() {
+    [[ -f "$config_file" ]] || {
+        echo "checkout-local configuration is missing; run: make configure" >&2
+        exit 1
+    }
+}
+
+require_stopped() {
+    local running
+
+    reject_active_system_install
+    if ! running="$(docker ps \
+        --filter label=com.docker.compose.project=supermicro-observability \
+        --quiet)"; then
+        echo "could not determine whether checkout-local monitoring is running" >&2
+        exit 1
+    fi
+    if [[ -n "$running" ]]; then
+        echo "stop the checkout-local monitoring stack before changing configuration" >&2
+        exit 1
+    fi
+}
+
+configure_interactive() {
+    require_stopped
+    "$project_dir/scripts/configure-host" --interactive --apply
+}
+
+command="${1:-}"
+shift || true
+case "$command" in
+    configure)
+        (( $# == 0 )) || usage
+        reject_active_system_install
+        configure_interactive
+        ;;
+    run)
+        (( $# == 0 )) || usage
+        reject_active_system_install
+        [[ -f "$config_file" ]] || configure_interactive
+        "$project_dir/scripts/monitoring-mode" normal
+        address="$(sed -n 's/^GRAFANA_HTTP_ADDR=//p' "$config_file")"
+        echo "Monitoring started. Open http://${address:-127.0.0.1}:3000"
+        echo "Retrieve the Grafana admin password with: make password"
+        ;;
+    stop)
+        (( $# == 0 )) || usage
+        reject_active_system_install
+        if [[ ! -f "$config_file" ]]; then
+            echo "No checkout-local monitoring configuration exists."
+            exit 0
+        fi
+        "$project_dir/scripts/monitoring-mode" off
+        ;;
+    status)
+        (( $# == 0 )) || usage
+        reject_active_system_install
+        if [[ ! -f "$config_file" ]]; then
+            echo "No checkout-local monitoring configuration exists."
+            exit 0
+        fi
+        "${compose[@]}" ps
+        ;;
+    password)
+        (( $# == 0 )) || usage
+        reject_active_system_install
+        require_config
+        "$project_dir/scripts/host_config.py" password
+        ;;
+    bind)
+        (( $# == 1 )) || usage
+        require_config
+        require_stopped
+        "$project_dir/scripts/configure-host" \
+            --non-interactive \
+            --apply \
+            --grafana-http-addr "$1"
+        ;;
+    *)
+        usage
+        ;;
+esac

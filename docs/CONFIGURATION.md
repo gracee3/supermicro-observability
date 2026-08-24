@@ -1,9 +1,31 @@
 # Host configuration
 
-`scripts/configure-host` is the supported interface for host-specific settings.
-It reads and replaces the ignored `.env` atomically, preserves or generates the
-Grafana secret, and renders ignored runtime files under `runtime/`. Do not copy a
-different machine's `.env`.
+Checkout-local operation is the default. `make configure` writes the private
+profile to ignored `.env`, preserves or generates the separate ignored Grafana
+credential, and renders state under `runtime/`. Do not copy another machine's
+configuration.
+
+Grafana defaults to `127.0.0.1:3000`. While monitoring is stopped, select an
+exact private host address for a trusted directly connected client with:
+
+```bash
+make bind ADDRESS=PRIVATE_HOST_ADDRESS
+```
+
+Wildcard and public binds are rejected; Prometheus and every collector remain
+loopback-only. Use `make bind ADDRESS=127.0.0.1` to restore the default.
+
+An optional system installation moves the profile and credential under
+`/etc/supermicro-observability` and mutable state under
+`/var/lib/supermicro-observability`. After installation, use
+`sudo supermicro-observability configure` or
+`sudo supermicro-observability bind PRIVATE_HOST_ADDRESS` while monitoring is
+stopped.
+
+The examples below show the source-level configurator for reproducible setup.
+For an existing installation, pass the same option flags to
+`sudo supermicro-observability configure` without `--apply` or the
+`--non-interactive` selector; the management command supplies those safely.
 
 ## Safe generic profile
 
@@ -19,8 +41,8 @@ scripts/configure-host --non-interactive --apply \
 scripts/doctor
 ```
 
-This starts only Prometheus, Grafana, and node_exporter. SMART and NVIDIA targets
-remain empty rather than failing continuously.
+This selects only Prometheus, Grafana, and node_exporter for the next start.
+SMART and NVIDIA targets remain empty rather than failing continuously.
 
 ## NVIDIA profile
 
@@ -30,8 +52,9 @@ scripts/doctor
 ```
 
 The doctor requires `nvidia-smi` to discover at least one GPU. UUIDs and GPU
-count are read dynamically; UUIDs are not stored in `.env`. Rolling state is
-always keyed internally by UUID. Published metric identity is configurable:
+count are read dynamically; UUIDs are not stored in public configuration.
+Rolling state is always keyed internally by UUID. Published metric identity is
+configurable:
 
 ```bash
 scripts/configure-host --non-interactive --apply \
@@ -40,8 +63,9 @@ scripts/configure-host --non-interactive --apply \
 ```
 
 `alias` is the privacy-preserving default and derives a stable pseudonymous
-`gpu_id` from the UUID and a random local salt stored in `.env`. `index` exposes
-only the current NVIDIA index and may change after hardware reordering. `uuid`
+`gpu_id` from the UUID and a random local salt stored in the private
+configuration. `index` exposes only the current NVIDIA index and may change
+after hardware reordering. `uuid`
 publishes the real UUID as `gpu_id` for environments that require direct
 hardware correlation. Salted aliases are pseudonyms, not a cryptographic
 anonymity guarantee.
@@ -66,8 +90,9 @@ scripts/doctor
 ```
 
 If a kernel name such as `/dev/nvme1n1` is supplied, the configurator resolves it
-to a stable by-id symlink before writing `.env`. It rejects partitions and, by
-default, rejects devices with no stable by-id identity. Compose maps the selected
+to a stable by-id symlink before writing the private configuration. It rejects
+partitions and, by default, rejects devices with no stable by-id identity.
+Compose maps the selected
 host disk read-only to the fixed container name `/dev/smart-target`. Because
 that neutral name removes kernel-name protocol hints, the configurator records
 an explicit `nvme` device type for NVMe disks. Other transports default to
@@ -114,7 +139,8 @@ scripts/configure-host --non-interactive --apply \
 ```
 
 The directory is mounted read-only into node_exporter. Disable the integration
-with `--disable-fan-metrics`; an empty project-local directory is used instead.
+with `--disable-fan-metrics`; an empty checkout-local runtime directory, or a
+state directory under `/var/lib` after installation, is used instead.
 See [Fan metrics](FAN-METRICS.md) for the metric contract.
 
 ## Platform profiles
@@ -133,6 +159,8 @@ unless `--show-sensitive` is explicitly supplied:
 scripts/configure-host --non-interactive --enable-nvidia
 ```
 
-Run `scripts/doctor` after every change. If generated Prometheus configuration
-is stale, rerun the last `configure-host --apply` command. `.env` must remain
-mode `0600`.
+The installed management command validates every applied change and accepts
+configuration updates only while monitoring is stopped. Installed configuration
+and credential files remain root-managed with mode `0640`; the service account's
+group receives read access. In a source checkout, run `scripts/doctor` after
+every change and keep ignored configuration and credentials at mode `0600`.

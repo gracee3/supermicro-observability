@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 project_dir="$(cd -- "$script_dir/.." && pwd -P)"
+config_file="${OBSERVABILITY_CONFIG_FILE:-$project_dir/.env}"
 duration="${1:-300}"
 interval=5
 if [[ ! "$duration" =~ ^[0-9]+$ ]] || (( duration < interval )); then
@@ -10,7 +11,7 @@ if [[ ! "$duration" =~ ^[0-9]+$ ]] || (( duration < interval )); then
     exit 2
 fi
 
-mapfile -t containers < <(docker compose --project-directory "$project_dir" --file "$project_dir/compose.yaml" --profile nvidia --profile smart --profile containers ps -q)
+mapfile -t containers < <(docker compose --env-file "$config_file" --project-directory "$project_dir" --file "$project_dir/compose.yaml" --profile nvidia --profile smart --profile containers ps -q)
 (( ${#containers[@]} > 0 )) || {
     echo "no monitoring containers are running" >&2
     exit 1

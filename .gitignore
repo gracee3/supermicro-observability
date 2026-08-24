@@ -6,6 +6,7 @@ data/grafana/**/*
 gpu-exporter/target/
 backups/**/*
 runtime/*
+runtime/secrets/
 !runtime/prometheus/
 !runtime/textfile_collector/
 runtime/prometheus/*

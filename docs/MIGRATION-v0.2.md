@@ -42,12 +42,18 @@ unmounted.
 ## 3. Apply monitoring configuration
 
 ```bash
-scripts/monitoring-mode normal
+make stop
+make install-system
+sudo supermicro-observability start
 ```
 
-This may recreate monitoring containers. It does not restart or modify fan
-control. Verify loopback listeners, Prometheus targets, GPU/sample health, SMART
-scope, fan metric freshness, routes, SSH, and protected storage afterward.
+The installer copies application files to `/opt`, private configuration and the
+Grafana credential to `/etc`, and persistent state to `/var/lib`. The original
+checkout is no longer needed afterward. Installation does not start monitoring,
+restart fan control, or enable monitoring at boot. Starting may recreate
+monitoring containers. Verify loopback listeners, Prometheus targets,
+GPU/sample health, SMART scope, fan metric freshness, routes, SSH, and protected
+storage afterward.
 
 ## Compatibility changes
 

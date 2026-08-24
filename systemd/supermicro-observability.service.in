@@ -1,5 +1,5 @@
 [Unit]
-Description=Loopback-only Supermicro observability Compose stack
+Description=Supermicro observability Compose stack
 Documentation=file:@PROJECT_DIR@/README.md
 Wants=docker.service
 After=docker.service
@@ -11,6 +11,13 @@ User=@SERVICE_USER@
 Group=@SERVICE_GROUP@
 Environment=HOME=@SERVICE_HOME@
 Environment=PATH=@CARGO_BIN_DIR@:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+EnvironmentFile=@CONFIG_FILE@
+Environment=OBSERVABILITY_CONFIG_FILE=@CONFIG_FILE@
+Environment=GRAFANA_PASSWORD_FILE=@PASSWORD_FILE@
+Environment=OBSERVABILITY_RUNTIME_DIR=@RUNTIME_DIR@
+Environment=OBSERVABILITY_DATA_DIR=@DATA_DIR@
+Environment=OBSERVABILITY_BUILD_DIR=@BUILD_DIR@
+Environment=GPU_EXPORTER_BUILD_CONTEXT=@BUILD_DIR@
 WorkingDirectory=@PROJECT_DIR@
 ExecStart=@PROJECT_DIR@/scripts/monitoring-mode normal
 ExecStop=@PROJECT_DIR@/scripts/monitoring-mode off

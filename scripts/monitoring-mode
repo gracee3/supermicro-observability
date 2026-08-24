@@ -4,7 +4,8 @@ set -Eeuo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 project_dir="$(cd -- "$script_dir/.." && pwd -P)"
 host_config="$script_dir/host_config.py"
-compose=(docker compose --project-directory "$project_dir" --file "$project_dir/compose.yaml")
+config_file="${OBSERVABILITY_CONFIG_FILE:-$project_dir/.env}"
+compose=(docker compose --env-file "$config_file" --project-directory "$project_dir" --file "$project_dir/compose.yaml")
 all_profiles=(--profile nvidia --profile smart --profile containers)
 
 usage() {
@@ -22,7 +23,8 @@ contains_service() {
 }
 
 build_fast_exporter() {
-    local binary="$project_dir/gpu-exporter/target/x86_64-unknown-linux-musl/release/supermicro-gpu-exporter"
+    local build_root="${OBSERVABILITY_BUILD_DIR:-$project_dir/gpu-exporter}"
+    local binary="$build_root/target/x86_64-unknown-linux-musl/release/supermicro-gpu-exporter"
     local rebuild=0
     if ! rustup target list --installed | grep -qx x86_64-unknown-linux-musl; then
         rustup target add x86_64-unknown-linux-musl
@@ -34,7 +36,7 @@ build_fast_exporter() {
         rebuild=1
     fi
     if (( rebuild )); then
-        cargo build \
+        CARGO_TARGET_DIR="$build_root/target" cargo build \
             --quiet \
             --release \
             --target x86_64-unknown-linux-musl \

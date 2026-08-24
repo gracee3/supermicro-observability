@@ -24,10 +24,20 @@ escape_replacement() {
 }
 
 template="$project_dir/systemd/supermicro-observability.service.in"
+config_file="${OBSERVABILITY_CONFIG_FILE:-$project_dir/.env}"
+password_file="${GRAFANA_PASSWORD_FILE:-$project_dir/runtime/secrets/grafana-admin-password}"
+runtime_dir="${OBSERVABILITY_RUNTIME_DIR:-$project_dir/runtime}"
+data_dir="${OBSERVABILITY_DATA_DIR:-$project_dir/data}"
+build_dir="${OBSERVABILITY_BUILD_DIR:-$project_dir/gpu-exporter}"
 sed \
     -e "s|@PROJECT_DIR@|$(escape_replacement "$project_dir")|g" \
     -e "s|@SERVICE_USER@|$(escape_replacement "$service_user")|g" \
     -e "s|@SERVICE_GROUP@|$(escape_replacement "$service_group")|g" \
     -e "s|@SERVICE_HOME@|$(escape_replacement "$service_home")|g" \
     -e "s|@CARGO_BIN_DIR@|$(escape_replacement "$service_home/.cargo/bin")|g" \
+    -e "s|@CONFIG_FILE@|$(escape_replacement "$config_file")|g" \
+    -e "s|@PASSWORD_FILE@|$(escape_replacement "$password_file")|g" \
+    -e "s|@RUNTIME_DIR@|$(escape_replacement "$runtime_dir")|g" \
+    -e "s|@DATA_DIR@|$(escape_replacement "$data_dir")|g" \
+    -e "s|@BUILD_DIR@|$(escape_replacement "$build_dir")|g" \
     "$template"

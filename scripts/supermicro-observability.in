@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+app_dir=@APP_DIR@
+config_dir=@CONFIG_DIR@
+config_file=@CONFIG_FILE@
+password_file=@PASSWORD_FILE@
+state_dir=@STATE_DIR@
+runtime_dir=@RUNTIME_DIR@
+data_dir=@DATA_DIR@
+build_dir=@BUILD_DIR@
+service_user=@SERVICE_USER@
+service_group=@SERVICE_GROUP@
+unit=supermicro-observability.service
+manager=/usr/local/sbin/supermicro-observability
+
+export OBSERVABILITY_CONFIG_FILE="$config_file"
+export GRAFANA_PASSWORD_FILE="$password_file"
+export OBSERVABILITY_RUNTIME_DIR="$runtime_dir"
+export OBSERVABILITY_DATA_DIR="$data_dir"
+export OBSERVABILITY_BUILD_DIR="$build_dir"
+export GPU_EXPORTER_BUILD_CONTEXT="$build_dir"
+
+usage() {
+    cat >&2 <<'EOF'
+usage: supermicro-observability COMMAND [OPTIONS]
+
+commands:
+  start                 start monitoring on demand
+  stop                  stop monitoring
+  restart               restart monitoring
+  status                show systemd service status
+  logs                  follow systemd service logs
+  password              print the Grafana admin password
+  configure [OPTIONS]   update the stopped service configuration
+  bind ADDRESS          set Grafana to an exact loopback/private address
+  uninstall             remove the app and unit; preserve config and data
+  purge                 remove the app, unit, config, credentials, and data
+EOF
+    exit 2
+}
+
+require_root() {
+    (( EUID == 0 )) || {
+        echo "run this command with sudo" >&2
+        exit 1
+    }
+}
+
+require_installed_app() {
+    [[ -x "$app_dir/scripts/configure-host" ]] || {
+        echo "application files are not installed at $app_dir" >&2
+        exit 1
+    }
+}
+
+require_no_external_stack() {
+    local running
+
+    [[ -f "$app_dir/compose.yaml" && -f "$config_file" ]] || return 0
+    if ! running="$(
+        runuser -u "$service_user" -- env \
+            OBSERVABILITY_CONFIG_FILE="$config_file" \
+            GRAFANA_PASSWORD_FILE="$password_file" \
+            OBSERVABILITY_RUNTIME_DIR="$runtime_dir" \
+            OBSERVABILITY_DATA_DIR="$data_dir" \
+            OBSERVABILITY_BUILD_DIR="$build_dir" \
+            GPU_EXPORTER_BUILD_CONTEXT="$build_dir" \
+            docker compose \
+                --env-file "$config_file" \
+                --project-directory "$app_dir" \
+                --file "$app_dir/compose.yaml" \
+                --profile nvidia \
+                --profile smart \
+                --profile containers \
+                ps --status running -q
+    )"; then
+        echo "could not determine whether monitoring is already running" >&2
+        exit 1
+    fi
+    if [[ -n "$running" ]]; then
+        echo "monitoring is already running outside systemd; stop it from its source checkout first" >&2
+        exit 1
+    fi
+}
+
+configure() {
+    require_root
+    require_installed_app
+    if systemctl is-active --quiet "$unit"; then
+        echo "stop monitoring before changing its configuration" >&2
+        exit 1
+    fi
+    if (( $# == 0 )); then
+        "$app_dir/scripts/configure-host" --interactive --apply
+    else
+        "$app_dir/scripts/configure-host" --non-interactive --apply "$@"
+    fi
+    chown root:"$service_group" "$config_file" "$password_file"
+    chmod 0640 "$config_file" "$password_file"
+    chown -R "$service_user":"$service_group" "$runtime_dir"
+    echo "Configuration updated. Start monitoring with: sudo $manager start"
+}
+
+uninstall_app() {
+    require_root
+    if ! systemctl is-active --quiet "$unit"; then
+        require_no_external_stack
+    fi
+    systemctl disable --now "$unit" >/dev/null 2>&1 || true
+    if [[ -f "$app_dir/compose.yaml" && -f "$config_file" ]]; then
+        runuser -u "$service_user" -- env \
+            OBSERVABILITY_CONFIG_FILE="$config_file" \
+            GRAFANA_PASSWORD_FILE="$password_file" \
+            OBSERVABILITY_RUNTIME_DIR="$runtime_dir" \
+            OBSERVABILITY_DATA_DIR="$data_dir" \
+            OBSERVABILITY_BUILD_DIR="$build_dir" \
+            GPU_EXPORTER_BUILD_CONTEXT="$build_dir" \
+            docker compose \
+                --env-file "$config_file" \
+                --project-directory "$app_dir" \
+                --file "$app_dir/compose.yaml" \
+                --profile nvidia \
+                --profile smart \
+                --profile containers \
+                down
+    fi
+    rm -f -- "/etc/systemd/system/$unit"
+    rm -rf -- "$app_dir"
+    systemctl daemon-reload
+    echo "Application and systemd unit removed."
+    echo "Configuration and data were preserved in $config_dir and $state_dir."
+    echo "Remove them explicitly with: sudo $manager purge"
+}
+
+command="${1:-}"
+shift || true
+case "$command" in
+    start|restart)
+        require_root
+        if ! systemctl is-active --quiet "$unit"; then
+            require_no_external_stack
+        fi
+        systemctl "$command" "$unit"
+        ;;
+    stop)
+        require_root
+        systemctl stop "$unit"
+        ;;
+    status)
+        systemctl status "$unit"
+        ;;
+    logs)
+        journalctl -u "$unit" -f
+        ;;
+    password)
+        require_root
+        [[ -r "$password_file" ]] || {
+            echo "Grafana password file is missing: $password_file" >&2
+            exit 1
+        }
+        cat "$password_file"
+        echo "Password file: $password_file" >&2
+        ;;
+    configure)
+        configure "$@"
+        ;;
+    bind)
+        (( $# == 1 )) || usage
+        configure --grafana-http-addr "$1"
+        ;;
+    uninstall)
+        (( $# == 0 )) || usage
+        uninstall_app
+        ;;
+    purge)
+        require_root
+        (( $# == 0 )) || usage
+        printf 'Type PURGE to remove monitoring configuration, credentials, and all stored metrics: '
+        read -r confirmation
+        [[ "$confirmation" == "PURGE" ]] || {
+            echo "Purge cancelled."
+            exit 1
+        }
+        uninstall_app
+        rm -rf -- "$config_dir" "$state_dir"
+        echo "Configuration, credentials, and monitoring data removed."
+        rm -f -- "$manager"
+        ;;
+    *)
+        usage
+        ;;
+esac
