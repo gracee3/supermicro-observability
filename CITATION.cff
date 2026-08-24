@@ -2,14 +2,15 @@ cff-version: 1.2.0
 message: "If you use this software, please cite the version you evaluated."
 title: "Supermicro Observability"
 abstract: >-
-  A loopback-only Prometheus and Grafana host-monitoring stack with optional
-  persistent high-frequency NVIDIA GPU sampling, explicit-device SMART metrics,
-  cached fan-controller metrics, and fail-closed private host profiles.
+  A loopback-first Prometheus and Grafana host-monitoring stack with optional
+  private-link Grafana access, persistent high-frequency NVIDIA GPU sampling,
+  explicit-device SMART metrics, cached fan-controller metrics, and fail-closed
+  private host profiles.
 type: software
 authors:
   - name: "gracee3"
-version: 0.1.0
-date-released: 2026-08-17
+version: 0.2.0
+date-released: 2026-08-24
 repository-code: "https://github.com/gracee3/supermicro-observability"
 url: "https://github.com/gracee3/supermicro-observability"
 license: MIT

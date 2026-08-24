@@ -4,6 +4,8 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-24
+
 ### Changed
 
 - Made checkout-local `make run`, `make stop`, and related commands the default
@@ -50,4 +52,6 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 - Publication metadata, methodology, safety boundaries, ethics disclosure,
   contribution guidance, and third-party attribution.
 
+[Unreleased]: https://github.com/gracee3/supermicro-observability/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gracee3/supermicro-observability/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gracee3/supermicro-observability/releases/tag/v0.1.0
