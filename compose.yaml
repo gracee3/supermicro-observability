@@ -166,7 +166,7 @@ services:
       prometheus:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -T 2 -O /dev/null http://127.0.0.1:3000/api/health"]
+      test: ["CMD-SHELL", "wget -q -T 2 -O /dev/null http://${GRAFANA_HTTP_ADDR:-127.0.0.1}:3000/api/health"]
       interval: 15s
       timeout: 3s
       retries: 5

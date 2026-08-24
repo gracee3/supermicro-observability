@@ -81,6 +81,7 @@ grep -Fq -- '--no-smartctl.scan' "$project_dir/compose.yaml"
 grep -Fq 'profiles: ["nvidia"]' "$project_dir/compose.yaml"
 grep -Fq 'profiles: ["smart"]' "$project_dir/compose.yaml"
 grep -Fq 'GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password' "$project_dir/compose.yaml"
+grep -Fq 'http://${GRAFANA_HTTP_ADDR:-127.0.0.1}:3000/api/health' "$project_dir/compose.yaml"
 if grep -Fq 'GF_SECURITY_ADMIN_PASSWORD:' "$project_dir/compose.yaml"; then
     echo "Grafana password must be supplied through its credential file" >&2
     exit 1

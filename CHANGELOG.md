@@ -17,6 +17,7 @@ All notable changes are documented here. Versions follow Semantic Versioning.
   state across standard system paths.
 - Allowed Grafana alone to bind to one exact private address while keeping every
   metrics endpoint on loopback.
+- Made Grafana's container health probe follow its configured bind address.
 - Replaced committed storage identities with private, stable by-id host profiles.
 - Made NVIDIA, SMART, and fan-textfile integration explicit optional features.
 - Keyed GPU rolling state by UUID and added UUID, index, or salted-alias output
