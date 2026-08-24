@@ -20,10 +20,12 @@ every metrics endpoint remains loopback-only. Treat broader exposure, automatic
 storage scans, new device pass-through, Docker socket access, or fan-control
 changes as security- and safety-sensitive.
 
-The system installation keeps application files under `/opt`, root-managed
-configuration and the Grafana credential under `/etc`, and mutable monitoring
-state under `/var/lib`. The password is mounted into Grafana as a file rather
-than exported in the Compose or systemd environment.
+Checkout-local operation keeps private configuration, the Grafana credential,
+and mutable data in explicitly ignored files. The optional system installation
+keeps application files under `/opt`, root-managed configuration and the
+Grafana credential under `/etc`, and mutable monitoring state under `/var/lib`.
+In both modes, the password is mounted into Grafana as a file rather than
+exported in the Compose or systemd environment.
 
 Upstream image vulnerabilities should identify the pinned image name and digest
 so that remediation remains reproducible.

@@ -34,11 +34,25 @@ if systemctl is-active --quiet supermicro-observability.service; then
     exit 1
 fi
 
+local_running=""
+if ! local_running="$(
+    runuser -u "$service_user" -- docker ps \
+        --filter label=com.docker.compose.project=supermicro-observability \
+        --quiet
+)"; then
+    echo "could not determine whether checkout-local monitoring is running" >&2
+    exit 1
+fi
+if [[ -n "$local_running" ]]; then
+    echo "checkout-local monitoring is running; run 'make stop' before system installation" >&2
+    exit 1
+fi
+
 if [[ ! -f "$config_file" ]]; then
     if [[ -f "$source_config" ]]; then
         runuser -u "$service_user" -- "$project_dir/scripts/doctor" --quiet
     else
-        echo "host profile is missing; run make install without sudo so it can configure the host" >&2
+        echo "host profile is missing; run make install-system without sudo so it can configure the host" >&2
         exit 1
     fi
 fi

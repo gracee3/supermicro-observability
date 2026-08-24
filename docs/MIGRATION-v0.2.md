@@ -42,7 +42,8 @@ unmounted.
 ## 3. Apply monitoring configuration
 
 ```bash
-make install
+make stop
+make install-system
 sudo supermicro-observability start
 ```
 

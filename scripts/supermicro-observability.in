@@ -54,6 +54,36 @@ require_installed_app() {
     }
 }
 
+require_no_external_stack() {
+    local running
+
+    [[ -f "$app_dir/compose.yaml" && -f "$config_file" ]] || return 0
+    if ! running="$(
+        runuser -u "$service_user" -- env \
+            OBSERVABILITY_CONFIG_FILE="$config_file" \
+            GRAFANA_PASSWORD_FILE="$password_file" \
+            OBSERVABILITY_RUNTIME_DIR="$runtime_dir" \
+            OBSERVABILITY_DATA_DIR="$data_dir" \
+            OBSERVABILITY_BUILD_DIR="$build_dir" \
+            GPU_EXPORTER_BUILD_CONTEXT="$build_dir" \
+            docker compose \
+                --env-file "$config_file" \
+                --project-directory "$app_dir" \
+                --file "$app_dir/compose.yaml" \
+                --profile nvidia \
+                --profile smart \
+                --profile containers \
+                ps --status running -q
+    )"; then
+        echo "could not determine whether monitoring is already running" >&2
+        exit 1
+    fi
+    if [[ -n "$running" ]]; then
+        echo "monitoring is already running outside systemd; stop it from its source checkout first" >&2
+        exit 1
+    fi
+}
+
 configure() {
     require_root
     require_installed_app
@@ -74,6 +104,9 @@ configure() {
 
 uninstall_app() {
     require_root
+    if ! systemctl is-active --quiet "$unit"; then
+        require_no_external_stack
+    fi
     systemctl disable --now "$unit" >/dev/null 2>&1 || true
     if [[ -f "$app_dir/compose.yaml" && -f "$config_file" ]]; then
         runuser -u "$service_user" -- env \
@@ -103,9 +136,16 @@ uninstall_app() {
 command="${1:-}"
 shift || true
 case "$command" in
-    start|stop|restart)
+    start|restart)
         require_root
+        if ! systemctl is-active --quiet "$unit"; then
+            require_no_external_stack
+        fi
         systemctl "$command" "$unit"
+        ;;
+    stop)
+        require_root
+        systemctl stop "$unit"
         ;;
     status)
         systemctl status "$unit"

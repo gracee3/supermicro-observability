@@ -1,19 +1,29 @@
 # Host configuration
 
-The installed `supermicro-observability configure` command is the supported
-interface for host-specific settings. It updates
-`/etc/supermicro-observability/config.env`, preserves or generates the separate
-Grafana credential, and renders state under `/var/lib/supermicro-observability`.
-In a development checkout, `scripts/configure-host` uses ignored local files
-instead. Do not copy another machine's configuration.
+Checkout-local operation is the default. `make configure` writes the private
+profile to ignored `.env`, preserves or generates the separate ignored Grafana
+credential, and renders state under `runtime/`. Do not copy another machine's
+configuration.
 
 Grafana defaults to `127.0.0.1:3000`. While monitoring is stopped, select an
-exact private host address for a trusted directly connected client with
-`sudo supermicro-observability bind PRIVATE_HOST_ADDRESS`. Wildcard and public
-binds are rejected; Prometheus and every collector remain loopback-only.
+exact private host address for a trusted directly connected client with:
 
-The examples below show the source-level configurator for reproducible setup and
-development. For an existing installation, pass the same option flags to
+```bash
+make bind ADDRESS=PRIVATE_HOST_ADDRESS
+```
+
+Wildcard and public binds are rejected; Prometheus and every collector remain
+loopback-only. Use `make bind ADDRESS=127.0.0.1` to restore the default.
+
+An optional system installation moves the profile and credential under
+`/etc/supermicro-observability` and mutable state under
+`/var/lib/supermicro-observability`. After installation, use
+`sudo supermicro-observability configure` or
+`sudo supermicro-observability bind PRIVATE_HOST_ADDRESS` while monitoring is
+stopped.
+
+The examples below show the source-level configurator for reproducible setup.
+For an existing installation, pass the same option flags to
 `sudo supermicro-observability configure` without `--apply` or the
 `--non-interactive` selector; the management command supplies those safely.
 
@@ -129,8 +139,8 @@ scripts/configure-host --non-interactive --apply \
 ```
 
 The directory is mounted read-only into node_exporter. Disable the integration
-with `--disable-fan-metrics`; an empty state directory under `/var/lib` is used
-instead after installation.
+with `--disable-fan-metrics`; an empty checkout-local runtime directory, or a
+state directory under `/var/lib` after installation, is used instead.
 See [Fan metrics](FAN-METRICS.md) for the metric contract.
 
 ## Platform profiles

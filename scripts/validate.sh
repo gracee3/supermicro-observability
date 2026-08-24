@@ -35,6 +35,7 @@ for script in \
     monitoring-mode \
     container-metrics \
     observer-check.sh \
+    source-control \
     configure-host \
     doctor \
     install-system.sh \
@@ -63,6 +64,9 @@ grep -Fq 'state_dir=/var/lib/supermicro-observability' "$render_dir/supermicro-o
 grep -Fq "app_dir=/opt/supermicro-observability" "$project_dir/scripts/install-system.sh"
 grep -Fq "config_dir=/etc/supermicro-observability" "$project_dir/scripts/install-system.sh"
 grep -Fq "state_dir=/var/lib/supermicro-observability" "$project_dir/scripts/install-system.sh"
+grep -Fq '.DEFAULT_GOAL := help' "$project_dir/Makefile"
+grep -Fq "checkout-local monitoring is running" "$project_dir/scripts/install-system.sh"
+grep -Fq "monitoring is already running outside systemd" "$render_dir/supermicro-observability"
 
 expected_digests=6
 actual_digests="$(grep -Ec '^    image: .+@sha256:[0-9a-f]{64}$' "$project_dir/compose.yaml")"

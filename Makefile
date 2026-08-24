@@ -1,36 +1,41 @@
-.PHONY: install start stop restart status logs password configure bind uninstall purge
+.DEFAULT_GOAL := help
 
-install:
-	@if [ ! -f .env ] && [ ! -f /etc/supermicro-observability/config.env ]; then scripts/configure-host --interactive --apply; fi
-	@sudo ./scripts/install-system.sh
+.PHONY: help configure run stop status password bind install-system install
 
-start:
-	@sudo supermicro-observability start
-
-stop:
-	@sudo supermicro-observability stop
-
-restart:
-	@sudo supermicro-observability restart
-
-status:
-	@sudo supermicro-observability status
-
-logs:
-	@sudo supermicro-observability logs
-
-password:
-	@sudo supermicro-observability password
+help:
+	@printf '%s\n' \
+		'Checkout-local operation (default):' \
+		'  make run                         configure if needed and start' \
+		'  make stop                        stop checkout-local monitoring' \
+		'  make status                      show checkout-local containers' \
+		'  make configure                   interactively update local config' \
+		'  make bind ADDRESS=PRIVATE_IP     set the stopped local Grafana bind' \
+		'  make password                    print the local Grafana password' \
+		'' \
+		'Optional system installation:' \
+		'  make install-system              install under /opt, /etc, and /var/lib'
 
 configure:
-	@sudo supermicro-observability configure
+	@scripts/source-control configure
+
+run:
+	@scripts/source-control run
+
+stop:
+	@scripts/source-control stop
+
+status:
+	@scripts/source-control status
+
+password:
+	@scripts/source-control password
 
 bind:
 	@test -n "$(ADDRESS)" || { echo 'usage: make bind ADDRESS=PRIVATE_IP' >&2; exit 2; }
-	@sudo supermicro-observability bind "$(ADDRESS)"
+	@scripts/source-control bind "$(ADDRESS)"
 
-uninstall:
-	@sudo supermicro-observability uninstall
+install-system:
+	@if [ ! -f .env ] && [ ! -f /etc/supermicro-observability/config.env ]; then scripts/source-control configure; fi
+	@sudo ./scripts/install-system.sh
 
-purge:
-	@sudo supermicro-observability purge
+install: install-system

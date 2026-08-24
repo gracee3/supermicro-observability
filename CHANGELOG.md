@@ -6,6 +6,10 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 
 ### Changed
 
+- Made checkout-local `make run`, `make stop`, and related commands the default
+  workflow, with no system installation required.
+- Renamed the explicit system-promotion workflow to `make install-system` and
+  prevented either lifecycle from taking over the other while it is running.
 - Made systemd installation disabled by default and prevented installation from
   starting the service, for on-demand use.
 - Made installation independent of the source checkout by separating immutable
@@ -22,8 +26,11 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 
 ### Added
 
-- Added `make install` and an installed management command with lifecycle,
-  configuration, password, uninstall, and confirmation-gated purge operations.
+- Added checkout-local lifecycle, bind, password, status, and configuration
+  targets plus a default command summary.
+- Added `make install-system` (`make install` alias) and an installed management
+  command with lifecycle, configuration, password, uninstall, and
+  confirmation-gated purge operations.
 - `configure-host` and `doctor` commands with fail-closed validation.
 - Generated file-discovery targets that avoid failures for disabled collectors.
 - A generic configuration guide, fan metric contract, and redacted deployment

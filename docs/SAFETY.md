@@ -4,8 +4,9 @@
 
 The committed defaults enable no NVIDIA runtime, SMART device, protected-device
 policy, or external fan metrics. Configuration requires explicit selection and
-stores persistent device identities only in the private `/etc` configuration.
-`doctor` checks the resulting policy before startup.
+stores persistent device identities only in ignored checkout-local `.env`, or
+in private `/etc` configuration after system installation. `doctor` checks the
+resulting policy before startup.
 
 ## Storage
 
@@ -51,7 +52,8 @@ container metadata supplies isolation.
 
 Prometheus is capped at 14 days and 12 GB. Containers have memory, process,
 CPU-share, and log-rotation constraints. Stopping monitoring preserves all
-state. `supermicro-observability uninstall` removes the unit, containers, and
-application while preserving `/etc` configuration and `/var/lib` data. `purge`
-requires an explicit typed confirmation before deleting either, and neither
-operation touches fan control.
+state. Deleting a checkout deletes checkout-local state. For an optional system
+installation, `supermicro-observability uninstall` removes the unit, containers,
+and application while preserving `/etc` configuration and `/var/lib` data.
+`purge` requires an explicit typed confirmation before deleting either, and
+neither operation touches fan control.

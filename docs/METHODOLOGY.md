@@ -20,8 +20,8 @@ eBPF probes, and cAdvisor. Optional features must be reported when enabled.
   5 minutes from one explicitly selected device.
 - Fan metrics, when enabled, come from an existing controller's cached textfile.
   Monitoring performs no additional IPMI query.
-- Prometheus and Grafana store installed data only in dedicated bind mounts
-  beneath `/var/lib/supermicro-observability`.
+- Prometheus and Grafana store data only in dedicated bind mounts beneath local
+  `data/`, or `/var/lib/supermicro-observability` after system installation.
 
 ## Reproduction metadata
 
