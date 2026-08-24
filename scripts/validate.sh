@@ -22,9 +22,15 @@ done
 for dashboard in "$project_dir"/grafana/dashboards/*.json; do
     python3 -m json.tool "$dashboard" >/dev/null
 done
+for document in "$project_dir"/schemas/*.json "$project_dir"/examples/*.json; do
+    python3 -m json.tool "$document" >/dev/null
+done
 python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' \
     "$project_dir/scripts/generate-dashboards.py"
-python3 -m py_compile "$project_dir/scripts/host_config.py"
+python3 -m py_compile \
+    "$project_dir/scripts/host_config.py" \
+    "$project_dir/scripts/observation.py" \
+    "$project_dir/scripts/observe"
 python3 -m unittest discover -s "$project_dir/tests" -v
 
 cargo fmt --manifest-path "$project_dir/gpu-exporter/Cargo.toml" -- --check
@@ -61,12 +67,21 @@ fi
 grep -Fq 'app_dir=/opt/supermicro-observability' "$render_dir/supermicro-observability"
 grep -Fq 'config_file=/etc/supermicro-observability/config.env' "$render_dir/supermicro-observability"
 grep -Fq 'state_dir=/var/lib/supermicro-observability' "$render_dir/supermicro-observability"
+grep -Fq 'exec "$app_dir/scripts/observe" "$@"' "$render_dir/supermicro-observability"
+grep -Fq 'exec "$app_dir/scripts/observe" mcp "$@"' "$render_dir/supermicro-observability"
 grep -Fq "app_dir=/opt/supermicro-observability" "$project_dir/scripts/install-system.sh"
 grep -Fq "config_dir=/etc/supermicro-observability" "$project_dir/scripts/install-system.sh"
 grep -Fq "state_dir=/var/lib/supermicro-observability" "$project_dir/scripts/install-system.sh"
+grep -Fq 'docs examples gpu-exporter grafana prometheus schemas scripts systemd' "$project_dir/scripts/install-system.sh"
 grep -Fq '.DEFAULT_GOAL := help' "$project_dir/Makefile"
 grep -Fq "checkout-local monitoring is running" "$project_dir/scripts/install-system.sh"
 grep -Fq "monitoring is already running outside systemd" "$render_dir/supermicro-observability"
+
+release_version="$(tr -d '\n' <"$project_dir/VERSION")"
+[[ "$release_version" == "0.3.0" ]]
+grep -Fq "version = \"$release_version\"" "$project_dir/gpu-exporter/Cargo.toml"
+grep -Fq "local/supermicro-gpu-exporter:$release_version" "$project_dir/compose.yaml"
+grep -Fq "version: $release_version" "$project_dir/CITATION.cff"
 
 expected_digests=6
 actual_digests="$(grep -Ec '^    image: .+@sha256:[0-9a-f]{64}$' "$project_dir/compose.yaml")"
@@ -113,5 +128,14 @@ fi
 git -C "$project_dir" check-ignore -q .env
 git -C "$project_dir" check-ignore -q runtime/secrets/grafana-admin-password
 git -C "$project_dir" check-ignore -q runtime/prometheus/prometheus.yml
+git -C "$project_dir" check-ignore -q .observability/example.json
+
+grep -Fq '"schema_version": "observation-v1"' "$project_dir/examples/observation-synthetic.json"
+grep -Fqi 'synthetic' "$project_dir/examples/observation-synthetic.json"
+if rg -n 'GPU-[0-9a-fA-F-]{8,}|/dev/(nvme|sd[a-z])|192\.168\.|10\.[0-9]+\.|command_line|process_id' \
+    "$project_dir/examples" "$project_dir/schemas"; then
+    echo "agent-interface schemas and examples contain a prohibited identity or process field" >&2
+    exit 1
+fi
 
 echo "Static validation passed."

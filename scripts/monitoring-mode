@@ -42,7 +42,7 @@ build_fast_exporter() {
             --target x86_64-unknown-linux-musl \
             --manifest-path "$project_dir/gpu-exporter/Cargo.toml"
     fi
-    if (( rebuild )) || ! docker image inspect local/supermicro-gpu-exporter:0.2.0 >/dev/null 2>&1; then
+    if (( rebuild )) || ! docker image inspect local/supermicro-gpu-exporter:0.3.0 >/dev/null 2>&1; then
         "${compose[@]}" --profile nvidia build --quiet fast-gpu-exporter
     fi
 }

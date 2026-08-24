@@ -72,7 +72,7 @@ services:
   fast-gpu-exporter:
     <<: *common
     profiles: ["nvidia"]
-    image: local/supermicro-gpu-exporter:0.2.0
+    image: local/supermicro-gpu-exporter:0.3.0
     build:
       context: ${GPU_EXPORTER_BUILD_CONTEXT:-./gpu-exporter}
       dockerfile: Dockerfile

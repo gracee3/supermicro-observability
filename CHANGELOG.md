@@ -4,6 +4,26 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-24
+
+### Added
+
+- Added a bounded standard-library JSON observation CLI with stable system,
+  GPU, thermal, health, and benchmark profiles.
+- Added checksummed evaluation sessions, bounded range summaries, private atomic
+  report output, a versioned response schema, and synthetic output example.
+- Added a local newline-delimited JSON-RPC STDIO MCP adapter with six read-only
+  tools and local, installed, generic-client, and SSH setup guidance.
+- Added isolated Prometheus fixtures, privacy/boundary unit tests, and MCP
+  transcript tests.
+
+### Changed
+
+- Extended optional system installation and its management command so agent
+  observation remains available without `sudo` after deleting the checkout.
+- Synchronized application, image, Cargo, citation, and release versions at
+  0.3.0. Existing configuration and monitoring databases require no migration.
+
 ## [0.2.0] - 2026-08-24
 
 ### Changed
@@ -52,6 +72,7 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 - Publication metadata, methodology, safety boundaries, ethics disclosure,
   contribution guidance, and third-party attribution.
 
-[Unreleased]: https://github.com/gracee3/supermicro-observability/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/gracee3/supermicro-observability/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/gracee3/supermicro-observability/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/gracee3/supermicro-observability/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gracee3/supermicro-observability/releases/tag/v0.1.0

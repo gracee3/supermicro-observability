@@ -11,6 +11,16 @@ Before changing implementation, read `README.md`, `CONTRIBUTING.md`,
 migration, fan-metrics, deployment, and publication documents when those
 surfaces are affected.
 
+## Agent observation interface
+
+Use `scripts/observe` (or the installed `supermicro-observability observe`) for
+bounded monitoring inspection. Prefer its stable JSON profiles over direct
+Prometheus requests. Use `scripts/observe mcp` or the installed
+`supermicro-observability mcp` for local STDIO MCP clients. These interfaces do
+not authorize lifecycle changes, arbitrary PromQL, process inspection, hardware
+access, causal claims, or cooling-safety conclusions. See
+`docs/AGENT-INTERFACE.md` for privacy, availability, and query bounds.
+
 ## Validation boundary
 
 No host-independent ordinary check has yet been approved. For instruction-only

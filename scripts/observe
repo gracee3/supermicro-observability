@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""Checkout-local entrypoint for the bounded observation interface."""
+
+import sys
+
+sys.dont_write_bytecode = True
+
+from observation import cli_main  # noqa: E402
+
+
+if __name__ == "__main__":
+    raise SystemExit(cli_main())
