@@ -32,6 +32,27 @@ make password
 make stop
 ```
 
+## Agent and evaluation observations
+
+Agents can inspect the running stack through a bounded, predictable JSON CLI.
+It queries only the existing loopback Prometheus endpoint and never starts or
+stops monitoring:
+
+```bash
+scripts/observe status --json
+scripts/observe snapshot --profile benchmark --json
+scripts/observe summarize --since 10m --profile benchmark --json
+scripts/observe begin --label eval-17 --metadata commit=abc123 --json
+```
+
+The same standard-library implementation provides a local STDIO MCP server at
+`scripts/observe mcp`. System installations expose the no-`sudo` equivalents
+`supermicro-observability observe ...` and `supermicro-observability mcp`, even
+after the checkout is deleted. No Prometheus port is exposed for remote use;
+an MCP client on another trusted machine can launch the installed server over
+SSH. See [Agent interface](docs/AGENT-INTERFACE.md) for commands, profiles,
+bounds, session completion, privacy behavior, MCP setup, and synthetic output.
+
 Configuration and generated runtime files remain in the checkout, while
 Grafana and Prometheus data remain under `data/`. Deleting the checkout also
 deletes that local configuration and history unless they are backed up or first
@@ -90,6 +111,13 @@ when wanted; it remains disabled across reboots:
 sudo supermicro-observability start
 sudo supermicro-observability status
 sudo supermicro-observability stop
+```
+
+Read-only observation does not require `sudo`:
+
+```bash
+supermicro-observability observe snapshot --profile system --json
+supermicro-observability mcp
 ```
 
 For direct-laptop access, set the installed bind while monitoring is stopped:

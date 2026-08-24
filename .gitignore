@@ -27,3 +27,4 @@ runtime/textfile_collector/*
 __pycache__/
 *.py[cod]
 .DS_Store
+.observability/

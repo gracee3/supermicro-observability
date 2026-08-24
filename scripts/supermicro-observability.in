@@ -26,6 +26,8 @@ usage() {
 usage: supermicro-observability COMMAND [OPTIONS]
 
 commands:
+  observe [OPTIONS]     query bounded monitoring data without sudo
+  mcp                   run the local read-only STDIO MCP adapter without sudo
   start                 start monitoring on demand
   stop                  stop monitoring
   restart               restart monitoring
@@ -136,6 +138,14 @@ uninstall_app() {
 command="${1:-}"
 shift || true
 case "$command" in
+    observe)
+        require_installed_app
+        exec "$app_dir/scripts/observe" "$@"
+        ;;
+    mcp)
+        require_installed_app
+        exec "$app_dir/scripts/observe" mcp "$@"
+        ;;
     start|restart)
         require_root
         if ! systemctl is-active --quiet "$unit"; then

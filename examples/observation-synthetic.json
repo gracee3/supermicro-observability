@@ -1,0 +1,36 @@
+{
+  "schema_version": "observation-v1",
+  "command": "snapshot",
+  "generated_at": "2030-01-02T03:04:05.000Z",
+  "status": "partial",
+  "profile": "benchmark",
+  "source": {
+    "type": "prometheus",
+    "endpoint": "http://127.0.0.1:9090"
+  },
+  "metrics": [
+    {
+      "id": "system.cpu.utilization",
+      "unit": "percent",
+      "dimensions": {},
+      "availability": "available",
+      "value": 12.5
+    },
+    {
+      "id": "gpu.utilization",
+      "unit": "percent",
+      "dimensions": {"gpu": "gpu-0123456789ab"},
+      "availability": "available",
+      "value": 44.0
+    },
+    {
+      "id": "health.smart.passed",
+      "unit": "boolean",
+      "dimensions": {},
+      "availability": "disabled"
+    }
+  ],
+  "warnings": [
+    "Synthetic example: values, aliases, and timestamps are invented and do not describe a host."
+  ]
+}

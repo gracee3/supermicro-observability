@@ -78,10 +78,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for directory in docs gpu-exporter grafana prometheus scripts systemd; do
+for directory in docs examples gpu-exporter grafana prometheus schemas scripts systemd; do
     cp -a -- "$project_dir/$directory" "$stage_dir/"
 done
-for file in AGENTS.md CHANGELOG.md CITATION.cff LICENSE NOTICE README.md SECURITY.md THIRD_PARTY.md compose.yaml; do
+for file in AGENTS.md CHANGELOG.md CITATION.cff LICENSE NOTICE README.md SECURITY.md THIRD_PARTY.md VERSION compose.yaml; do
     cp -a -- "$project_dir/$file" "$stage_dir/"
 done
 rm -rf -- "$stage_dir/gpu-exporter/target" "$stage_dir/scripts/__pycache__"
