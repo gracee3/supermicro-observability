@@ -18,30 +18,60 @@ make install
 ```
 
 The installer asks which optional collectors and host safety policies to use.
-For Grafana, keep `127.0.0.1` for SSH-tunnel-only access or enter the host's
-private address on a trusted direct link. It then:
+Grafana always starts from the safe `127.0.0.1:3000` default. Installation then:
 
 - generates a random Grafana administrator password;
-- writes the private host profile to the ignored `.env` file;
-- prints the password in the terminal and saves it to the explicitly ignored
-  `runtime/secrets/grafana-admin-password` file with mode `0600`; and
+- copies versioned application files to `/opt/supermicro-observability`;
+- writes private configuration and the password separately under
+  `/etc/supermicro-observability`;
+- places persistent Prometheus, Grafana, and runtime state under
+  `/var/lib/supermicro-observability`;
+- installs the `supermicro-observability` management command in
+  `/usr/local/sbin`; and
 - installs the systemd unit without starting it and leaves it disabled at boot.
 
-The terminal display may remain in shell or tmux scrollback. Retrieve the saved
-password later with `make password`.
+On the first installation, existing project-local Grafana and Prometheus data
+are migrated into `/var/lib`; later installations preserve the installed data.
 
-Start and stop monitoring only when wanted:
+The password is printed in the terminal and stored at
+`/etc/supermicro-observability/grafana-admin-password`. The terminal display may
+remain in shell or tmux scrollback. Retrieve it later with:
 
 ```bash
-make start
-make status
-make stop
+sudo supermicro-observability password
 ```
 
-From a directly connected laptop, open `http://MONITORING_HOST:3000` and sign in
-as `admin` with the generated password. `MONITORING_HOST` is the private address
-entered during installation. Port `3000` is Grafana's conventional port; all
-collector and Prometheus endpoints remain bound to host loopback.
+The source checkout is no longer needed after installation and may be deleted.
+
+| Installed path | Purpose | Removal behavior |
+|---|---|---|
+| `/opt/supermicro-observability` | Versioned application, dashboards, Compose, and scripts | Removed by uninstall |
+| `/etc/supermicro-observability` | Root-managed host configuration and Grafana credential | Preserved by uninstall; removed by confirmed purge |
+| `/var/lib/supermicro-observability` | Prometheus, Grafana, generated runtime, and build state | Preserved by uninstall; removed by confirmed purge |
+| `/usr/local/sbin/supermicro-observability` | Stable lifecycle and maintenance command | Preserved for post-uninstall purge; removed by purge |
+| `/etc/systemd/system/supermicro-observability.service` | Disabled-by-default lifecycle unit | Removed by uninstall |
+
+Start and stop monitoring only when wanted. The unit remains disabled across
+reboots:
+
+```bash
+sudo supermicro-observability start
+sudo supermicro-observability status
+sudo supermicro-observability stop
+```
+
+For a trusted directly connected laptop, select the host's exact private link
+address and then start monitoring:
+
+```bash
+sudo supermicro-observability bind PRIVATE_HOST_ADDRESS
+sudo supermicro-observability start
+```
+
+Open `http://PRIVATE_HOST_ADDRESS:3000` and sign in as `admin` with the generated
+password. Port `3000` is Grafana's conventional port; all collector and
+Prometheus endpoints remain bound to host loopback. Restore local-only access
+with `sudo supermicro-observability bind 127.0.0.1` while monitoring is stopped.
 
 > [!CAUTION]
 > Monitoring is portable; physical cooling policy is not. This repository does
@@ -52,8 +82,8 @@ collector and Prometheus endpoints remain bound to host loopback.
 ## What is generic and what is local
 
 The committed core provides Prometheus, Grafana, node_exporter, dashboards,
-loopback listeners, resource limits, and optional collector profiles. A private
-`.env` generated on each host supplies:
+loopback metrics listeners, resource limits, and optional collector profiles. A
+private `/etc/supermicro-observability/config.env` supplies:
 
 - a non-identifying Prometheus host label;
 - enabled NVIDIA and SMART features;
@@ -62,8 +92,9 @@ loopback listeners, resource limits, and optional collector profiles. A private
 - the fan textfile directory, if one already exists; and
 - a generated node disk-exclusion expression.
 
-`.env`, generated Prometheus configuration/targets, live databases, backups,
-and build artifacts are excluded from Git.
+The Grafana password is stored in a separate root-managed credential file rather
+than an environment variable. Generated Prometheus configuration, live
+databases, credentials, backups, and build artifacts are not part of Git.
 
 The `supermicro-x11spa-tf` platform profile performs a DMI compatibility check.
 It does not provide or change fan curves. A dated, redacted example deployment
@@ -88,9 +119,10 @@ datasource.
 | Container resource use | cAdvisor | Explicit opt-in with process, labels and high-cardinality metrics constrained | 5 s |
 | Monitoring health and overhead | Prometheus and provisioned dashboards | Target health, scrape timing and stack resource dashboards | Dashboard-dependent |
 
-Prometheus retains at most 14 days or 12 GB. Grafana and Prometheus use ignored
-project-local bind mounts for persistent data. Containers have memory, process,
-CPU-share, read-only-filesystem, capability and log-rotation constraints.
+Prometheus retains at most 14 days or 12 GB. Grafana and Prometheus use bind
+mounts under `/var/lib/supermicro-observability` for persistent data. Containers
+have memory, process, CPU-share, read-only-filesystem, capability and
+log-rotation constraints.
 
 ```text
 host sensors and kernel interfaces
@@ -106,14 +138,15 @@ No process IDs, command lines, or per-process GPU metrics are collected. GPU
 identity defaults to a stable salted alias. Disabled optional collectors use
 empty file-discovery targets rather than producing permanent scrape failures.
 
-## Explicit non-interactive configuration
+## Source configuration and development
 
 NVIDIA Container Toolkit, `nvidia-smi`, Rust, MUSL, and currently an x86_64 host
 are required only when the custom NVIDIA profile is enabled. `configure-host`
-previews choices unless `--apply` is supplied. It writes `.env`
-atomically with mode `0600`, generates a random Grafana password, resolves whole
-disks to stable by-id paths, and renders local Prometheus configuration. It does
-not mount, unlock, scan, or write a selected device.
+previews choices unless `--apply` is supplied. In a source checkout it writes an
+ignored `.env` and separate ignored password file atomically with mode `0600`,
+resolves whole disks to stable by-id paths, and renders local Prometheus
+configuration. The system installer relocates these settings to `/etc`. The
+configurator does not mount, unlock, scan, or write a selected device.
 
 For repeatable/headless setup, use explicit flags. This safe generic example
 enables no optional hardware access:
@@ -135,9 +168,10 @@ and fan-textfile examples. Existing v0.1 deployments should follow the
 
 ## Access and endpoints
 
-Grafana binds to `GRAFANA_HTTP_ADDR`, which defaults to `127.0.0.1` and accepts
-only a loopback or private IP address. With the loopback default, reach it
-through an existing trusted SSH connection:
+Grafana binds to `GRAFANA_HTTP_ADDR` from
+`/etc/supermicro-observability/config.env`. It defaults to `127.0.0.1` and
+accepts only a loopback or private IP address. With the loopback default, reach
+it through an existing trusted SSH connection:
 
 ```bash
 ssh -L 3000:127.0.0.1:3000 USER@MONITORING_HOST
@@ -162,21 +196,20 @@ or the default stable salted alias; the choice and alias salt are private host
 configuration. No process IDs, command lines, or per-process GPU metrics are
 collected.
 
-## Operation
+## Installed operation
 
 ```bash
-scripts/monitoring-mode normal
-scripts/monitoring-mode benchmark
-scripts/monitoring-mode off
-scripts/container-metrics on
-scripts/container-metrics off
+sudo supermicro-observability start
+sudo supermicro-observability stop
+sudo supermicro-observability restart
+sudo supermicro-observability status
+sudo supermicro-observability logs
+sudo supermicro-observability configure
 ```
 
-`normal` starts the core plus enabled NVIDIA and SMART profiles. `benchmark`
-keeps Prometheus, node_exporter, and the fast GPU sampler when configured, while
-stopping Grafana, SMART, the slow NVML catalog, and cAdvisor. `off` stops all
-monitoring containers. None of these commands installs, stops, or restarts a fan
-controller.
+`start` runs the core plus enabled NVIDIA and SMART profiles. `stop` stops all
+monitoring containers. Configuration is accepted only while monitoring is
+stopped. None of these commands installs, stops, or restarts a fan controller.
 
 Dashboards use a selectable disk variable instead of a committed device name.
 Unavailable optional metrics appear as no data; their empty file-discovery
@@ -184,28 +217,35 @@ targets do not create permanent Prometheus scrape failures.
 
 ## Native startup and fan integration
 
-`make install` installs the monitoring systemd unit disabled at boot and does
-not start it. It can also be installed directly after host configuration with:
+`make install` performs a system installation, leaves the unit disabled at boot,
+and does not start it. It can also be invoked directly after source
+configuration with:
 
 ```bash
 sudo ./scripts/install-system.sh
 ```
 
-The unit is intentionally not enabled at boot. Reinstalling does not stop an
-already-running stack. Use `make start` and `make stop`, or the equivalent
-`sudo systemctl start|stop supermicro-observability` commands.
+The unit is intentionally not enabled at boot. Reinstallation refuses to modify
+an already-running stack. Use the installed management command for lifecycle,
+configuration, password retrieval, and logs.
 
-Rollback disables the unit and removes containers without deleting bind-mounted
-data:
+Uninstall stops monitoring, removes its containers, application files, and
+systemd unit, but preserves configuration, credentials, and monitoring history:
 
 ```bash
-sudo ./scripts/rollback-system.sh
+sudo supermicro-observability uninstall
 ```
 
-Both commands leave fan control untouched. A separately reviewed controller can
+To additionally delete configuration, credentials, and all stored monitoring
+data, use `sudo supermicro-observability purge` and type the required `PURGE`
+confirmation. Neither command removes shared container images or touches fan
+control.
+
+A separately reviewed controller can
 write the documented [fan metrics contract](docs/FAN-METRICS.md). The legacy
 X11SPA-TF controller integration is available only through an explicit command
-whose confirmation flag states that it restarts fan control:
+whose confirmation flag states that it restarts fan control. Run this separate
+integration from the reviewed source checkout before deleting that checkout:
 
 ```bash
 sudo FAN_CONTROL_DIR=/reviewed/path \

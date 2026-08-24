@@ -3,9 +3,9 @@
 ## Fail-closed optional hardware access
 
 The committed defaults enable no NVIDIA runtime, SMART device, protected-device
-policy, or external fan metrics. `configure-host` requires explicit selection
-and stores persistent device identities only in ignored `.env`. `doctor` checks
-the resulting policy before startup.
+policy, or external fan metrics. Configuration requires explicit selection and
+stores persistent device identities only in the private `/etc` configuration.
+`doctor` checks the resulting policy before startup.
 
 ## Storage
 
@@ -47,9 +47,11 @@ exact private host address for a trusted direct connection. Wildcard and public
 Grafana binds are rejected. Verify sockets after deployment rather than assuming
 container metadata supplies isolation.
 
-## Resource limits and rollback
+## Resource limits and removal
 
 Prometheus is capped at 14 days and 12 GB. Containers have memory, process,
-CPU-share, and log-rotation constraints. `monitoring-mode off` stops monitoring
-only. `rollback-system.sh` disables the monitoring unit and removes containers
-without deleting project data or touching fan control.
+CPU-share, and log-rotation constraints. Stopping monitoring preserves all
+state. `supermicro-observability uninstall` removes the unit, containers, and
+application while preserving `/etc` configuration and `/var/lib` data. `purge`
+requires an explicit typed confirmation before deleting either, and neither
+operation touches fan control.

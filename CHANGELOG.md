@@ -8,6 +8,9 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 
 - Made systemd installation disabled by default and prevented installation from
   starting the service, for on-demand use.
+- Made installation independent of the source checkout by separating immutable
+  application files, administrator configuration, credentials, and persistent
+  state across standard system paths.
 - Allowed Grafana alone to bind to one exact private address while keeping every
   metrics endpoint on loopback.
 - Replaced committed storage identities with private, stable by-id host profiles.
@@ -19,8 +22,8 @@ All notable changes are documented here. Versions follow Semantic Versioning.
 
 ### Added
 
-- Added `make install`, lifecycle helpers, and an ignored mode-`0600` Grafana
-  password file for a straightforward local installation workflow.
+- Added `make install` and an installed management command with lifecycle,
+  configuration, password, uninstall, and confirmation-gated purge operations.
 - `configure-host` and `doctor` commands with fail-closed validation.
 - Generated file-discovery targets that avoid failures for disabled collectors.
 - A generic configuration guide, fan metric contract, and redacted deployment

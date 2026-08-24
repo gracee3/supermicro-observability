@@ -74,7 +74,7 @@ services:
     profiles: ["nvidia"]
     image: local/supermicro-gpu-exporter:0.2.0
     build:
-      context: ./gpu-exporter
+      context: ${GPU_EXPORTER_BUILD_CONTEXT:-./gpu-exporter}
       dockerfile: Dockerfile
     container_name: supermicro-fast-gpu-exporter
     runtime: nvidia
@@ -110,8 +110,8 @@ services:
       - --query.max-concurrency=8
       - --log.level=warn
     volumes:
-      - ./runtime/prometheus:/etc/prometheus:ro
-      - ./data/prometheus:/prometheus
+      - ${OBSERVABILITY_RUNTIME_DIR:-./runtime}/prometheus:/etc/prometheus:ro
+      - ${OBSERVABILITY_DATA_DIR:-./data}/prometheus:/prometheus
     tmpfs:
       - /tmp:size=32m,mode=1777
     mem_limit: 2g
@@ -138,7 +138,7 @@ services:
       GF_SERVER_HTTP_ADDR: ${GRAFANA_HTTP_ADDR:-127.0.0.1}
       GF_SERVER_HTTP_PORT: "3000"
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env}
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
       GF_SECURITY_DISABLE_GRAVATAR: "true"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
@@ -151,7 +151,8 @@ services:
       GF_METRICS_ENABLED: "true"
       GF_LOG_LEVEL: warn
     volumes:
-      - ./data/grafana:/var/lib/grafana
+      - ${OBSERVABILITY_DATA_DIR:-./data}/grafana:/var/lib/grafana
+      - ${GRAFANA_PASSWORD_FILE:-./runtime/secrets/grafana-admin-password}:/run/secrets/grafana-admin-password:ro
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     tmpfs:

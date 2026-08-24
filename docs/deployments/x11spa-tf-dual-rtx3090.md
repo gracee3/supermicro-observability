@@ -17,8 +17,8 @@ example of a private host profile, not a portable hardware preset.
 - cached metrics from a separately calibrated native fan controller
 
 Actual disk by-id values, GPU UUIDs, network addresses, usernames, and fan-header
-mapping are deliberately omitted. The private `.env` selects stable disks and
-the `supermicro-x11spa-tf` DMI profile.
+mapping are deliberately omitted. The private installed configuration selects
+stable disks and the `supermicro-x11spa-tf` DMI profile.
 
 ## Observed monitoring budget
 

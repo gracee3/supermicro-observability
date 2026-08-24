@@ -20,14 +20,15 @@ eBPF probes, and cAdvisor. Optional features must be reported when enabled.
   5 minutes from one explicitly selected device.
 - Fan metrics, when enabled, come from an existing controller's cached textfile.
   Monitoring performs no additional IPMI query.
-- Prometheus and Grafana store data only in project-local ignored bind mounts.
+- Prometheus and Grafana store installed data only in dedicated bind mounts
+  beneath `/var/lib/supermicro-observability`.
 
 ## Reproduction metadata
 
 Record the exact commit or release, image digests, host profile feature flags,
 kernel, NVIDIA driver, Docker version, hardware, ambient conditions, workload,
 duration, sample count, aggregation, and all unsuccessful or excluded runs. Do
-not publish `.env`, storage identities, GPU UUIDs, usernames, or raw workload
+not publish private configuration, storage identities, GPU UUIDs, usernames, or raw workload
 labels.
 
 Run the configuration and static checks first:

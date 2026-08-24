@@ -12,6 +12,7 @@ set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 project_dir="$(cd -- "$script_dir/.." && pwd -P)"
+config_file="${OBSERVABILITY_CONFIG_FILE:-$project_dir/.env}"
 fan_dir="${FAN_CONTROL_DIR:-$project_dir/../supermicro-fan-control}"
 backup_dir=/var/backups/supermicro-observability
 
@@ -20,9 +21,9 @@ backup_dir=/var/backups/supermicro-observability
     exit 1
 }
 python3 "$project_dir/scripts/host_config.py" check --quiet --no-compose
-profile="$(sed -n 's/^PLATFORM_PROFILE=//p' "$project_dir/.env")"
-fan_mode="$(sed -n 's/^FAN_METRICS_MODE=//p' "$project_dir/.env")"
-textfile_dir="$(sed -n 's/^TEXTFILE_COLLECTOR_DIR=//p' "$project_dir/.env")"
+profile="$(sed -n 's/^PLATFORM_PROFILE=//p' "$config_file")"
+fan_mode="$(sed -n 's/^FAN_METRICS_MODE=//p' "$config_file")"
+textfile_dir="$(sed -n 's/^TEXTFILE_COLLECTOR_DIR=//p' "$config_file")"
 [[ "$profile" == "supermicro-x11spa-tf" ]] || {
     echo "legacy fan integration requires PLATFORM_PROFILE=supermicro-x11spa-tf" >&2
     exit 1

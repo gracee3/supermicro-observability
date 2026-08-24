@@ -49,6 +49,18 @@ class HostConfigTests(unittest.TestCase):
             self.assertEqual(values["SAFE"], f"$(touch {marker})")
             self.assertFalse(marker.exists())
 
+    def test_config_file_excludes_grafana_password(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original_env = host_config.ENV_FILE
+            try:
+                host_config.ENV_FILE = Path(directory) / "config.env"
+                config = host_config.defaults({})
+                host_config.write_env(config)
+                content = host_config.ENV_FILE.read_text(encoding="utf-8")
+            finally:
+                host_config.ENV_FILE = original_env
+        self.assertNotIn("GRAFANA_ADMIN_PASSWORD", content)
+
     def test_services_follow_feature_flags(self):
         config = host_config.defaults({})
         self.assertEqual(

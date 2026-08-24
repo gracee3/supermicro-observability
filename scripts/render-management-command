@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+project_dir="${1:-}"
+service_user="${2:-}"
+[[ -d "$project_dir" && -n "$service_user" ]] || {
+    echo "usage: render-management-command PROJECT_DIR SERVICE_USER" >&2
+    exit 2
+}
+
+service_group="$(id -gn "$service_user")"
+template="$project_dir/scripts/supermicro-observability.in"
+
+escape_replacement() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//&/\\&}"
+    value="${value//|/\\|}"
+    printf '%s\n' "$value"
+}
+
+sed \
+    -e "s|@APP_DIR@|/opt/supermicro-observability|g" \
+    -e "s|@CONFIG_DIR@|/etc/supermicro-observability|g" \
+    -e "s|@CONFIG_FILE@|/etc/supermicro-observability/config.env|g" \
+    -e "s|@PASSWORD_FILE@|/etc/supermicro-observability/grafana-admin-password|g" \
+    -e "s|@STATE_DIR@|/var/lib/supermicro-observability|g" \
+    -e "s|@RUNTIME_DIR@|/var/lib/supermicro-observability/runtime|g" \
+    -e "s|@DATA_DIR@|/var/lib/supermicro-observability/data|g" \
+    -e "s|@BUILD_DIR@|/var/lib/supermicro-observability/build/gpu-exporter|g" \
+    -e "s|@SERVICE_USER@|$(escape_replacement "$service_user")|g" \
+    -e "s|@SERVICE_GROUP@|$(escape_replacement "$service_group")|g" \
+    "$template"
