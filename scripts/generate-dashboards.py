@@ -85,15 +85,6 @@ def text_stat(result):
     return result
 
 
-def value_stat(result, decimals):
-    result["fieldConfig"]["defaults"]["decimals"] = decimals
-    result["options"]["colorMode"] = "none"
-    result["options"]["graphMode"] = "none"
-    result["options"]["justifyMode"] = "center"
-    result["options"]["textMode"] = "value"
-    return result
-
-
 def cpu_utilization_panel(pid, x, y, w, h):
     result = panel(
         pid,
@@ -268,71 +259,6 @@ def gpu_thermals_panel(pid, gpu_index, x, y, w, h):
     return result
 
 
-def gpu_readout_panel(pid, gpu_index, x, y, w, h):
-    result = panel(
-        pid,
-        "",
-        "stat",
-        x,
-        y,
-        w,
-        h,
-        [
-            (f'supermicro_gpu_graphics_clock_hertz{{gpu_index="{gpu_index}"}}', "GPU", "A"),
-            (f'supermicro_gpu_memory_clock_hertz{{gpu_index="{gpu_index}"}}', "MEM", "B"),
-            (f'supermicro_gpu_pcie_link_generation{{gpu_index="{gpu_index}"}}', "PCIe", "C"),
-            (f'supermicro_gpu_pcie_link_width{{gpu_index="{gpu_index}"}}', "LINK", "D"),
-        ],
-    )
-    result.pop("description", None)
-    result["options"].update(
-        {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "horizontal",
-            "textMode": "value_and_name",
-            "wideLayout": False,
-            "text": {"titleSize": 11, "valueSize": 20},
-        }
-    )
-    result["fieldConfig"]["overrides"] = [
-        field_override(
-            "GPU",
-            [
-                ("unit", "hertz"),
-                ("decimals", 2),
-                ("color", {"mode": "fixed", "fixedColor": "green"}),
-            ],
-        ),
-        field_override(
-            "MEM",
-            [
-                ("unit", "hertz"),
-                ("decimals", 2),
-                ("color", {"mode": "fixed", "fixedColor": "yellow"}),
-            ],
-        ),
-        field_override(
-            "PCIe",
-            [
-                ("unit", "prefix:Gen "),
-                ("decimals", 0),
-                ("color", {"mode": "fixed", "fixedColor": "green"}),
-            ],
-        ),
-        field_override(
-            "LINK",
-            [
-                ("unit", "prefix:x"),
-                ("decimals", 0),
-                ("color", {"mode": "fixed", "fixedColor": "yellow"}),
-            ],
-        ),
-    ]
-    return result
-
-
 def dashboard(uid, title, tags, panels, variables=None):
     return {
         "annotations": {"list": []},
@@ -386,18 +312,14 @@ DASHBOARDS = {
         ["combined", "custom"],
         [
             row(1, "Host summary", 0),
-            cpu_utilization_panel(2, 0, 1, 9, 8),
-            panel(3, "Memory", "timeseries", 9, 1, 9, 8, [("node_memory_MemTotal_bytes{job=\"node-fast\"} - node_memory_MemAvailable_bytes{job=\"node-fast\"}", "used", "A"), ("node_memory_MemAvailable_bytes{job=\"node-fast\"}", "available", "B"), ("node_memory_Cached_bytes{job=\"node-fast\"}", "cache", "C")], "bytes"),
-            value_stat(panel(4, "", "stat", 18, 1, 3, 8, [("avg(node_cpu_scaling_frequency_hertz{job=\"node-slow\"})", "", "A")], "hertz"), 2),
-            value_stat(panel(5, "", "stat", 21, 1, 3, 8, [("(sum(node_memory_MemTotal_bytes{job=\"node-fast\"}) - sum(node_memory_MemAvailable_bytes{job=\"node-fast\"})) / 1024 / 1024", "", "A")], "suffix: MB"), 0),
+            cpu_utilization_panel(2, 0, 1, 12, 8),
+            panel(3, "Memory", "timeseries", 12, 1, 12, 8, [("node_memory_MemTotal_bytes{job=\"node-fast\"} - node_memory_MemAvailable_bytes{job=\"node-fast\"}", "used", "A"), ("node_memory_MemAvailable_bytes{job=\"node-fast\"}", "available", "B"), ("node_memory_Cached_bytes{job=\"node-fast\"}", "cache", "C")], "bytes"),
             row(10, "GPU 0", 9),
-            gpu_activity_panel(11, 0, 0, 10, 9, 8),
-            gpu_thermals_panel(13, 0, 9, 10, 9, 8),
-            gpu_readout_panel(16, 0, 18, 10, 6, 8),
+            gpu_activity_panel(11, 0, 0, 10, 12, 8),
+            gpu_thermals_panel(13, 0, 12, 10, 12, 8),
             row(20, "GPU 1", 18),
-            gpu_activity_panel(21, 1, 0, 19, 9, 8),
-            gpu_thermals_panel(23, 1, 9, 19, 9, 8),
-            gpu_readout_panel(26, 1, 18, 19, 6, 8),
+            gpu_activity_panel(21, 1, 0, 19, 12, 8),
+            gpu_thermals_panel(23, 1, 12, 19, 12, 8),
             row(30, "Cooling telemetry", 27),
             hide_legend(panel(31, "Fan RPM", "timeseries", 0, 28, 8, 8, [("supermicro_fan_speed_rpm", "", "A")], "rpm", "Cached fan-controller telemetry; monitoring does not poll IPMI or control fans.")),
             hide_legend(panel(32, "Controller temperatures", "timeseries", 8, 28, 8, 8, [("supermicro_fan_temperature_celsius", "", "A")], "celsius", "Aggregated cached controller inputs; values do not validate a cooling policy.")),
@@ -411,12 +333,10 @@ DASHBOARDS = {
             row(50, "CPU detail", 53),
             panel(51, "CPU modes", "timeseries", 0, 54, 12, 8, [("sum by (mode) (rate(node_cpu_seconds_total{job=\"node-fast\"}[30s])) * 100", "{{mode}}", "A")], "percent"),
             panel(52, "PSI waiting time", "timeseries", 12, 54, 12, 8, [("rate(node_pressure_cpu_waiting_seconds_total{job=\"node-fast\"}[30s])", "CPU some", "A"), ("rate(node_pressure_memory_waiting_seconds_total{job=\"node-fast\"}[30s])", "memory some", "B"), ("rate(node_pressure_io_waiting_seconds_total{job=\"node-fast\"}[30s])", "I/O some", "C")], "percentunit"),
-            row(60, "GPU throttling", 62),
-            panel(61, "Throttle reasons", "timeseries", 0, 63, 24, 8, [("supermicro_gpu_throttle_reason_active", "GPU {{gpu_index}} {{reason}}", "A")], "bool"),
-            row(70, "Monitoring overhead", 71),
-            panel(71, "Scrape duration", "timeseries", 0, 72, 8, 8, [("scrape_duration_seconds", "{{job}}", "A")], "s"),
-            panel(72, "Exporter CPU", "timeseries", 8, 72, 8, 8, [("sum by (job) (rate(process_cpu_seconds_total{job!=\"node-fast\"}[1m])) * 100", "{{job}}", "A")], "percent"),
-            panel(73, "Exporter RSS", "timeseries", 16, 72, 8, 8, [("max by (job) (process_resident_memory_bytes)", "{{job}}", "A")], "bytes"),
+            row(70, "Monitoring overhead", 62),
+            panel(71, "Scrape duration", "timeseries", 0, 63, 8, 8, [("scrape_duration_seconds", "{{job}}", "A")], "s"),
+            panel(72, "Exporter CPU", "timeseries", 8, 63, 8, 8, [("sum by (job) (rate(process_cpu_seconds_total{job!=\"node-fast\"}[1m])) * 100", "{{job}}", "A")], "percent"),
+            panel(73, "Exporter RSS", "timeseries", 16, 63, 8, 8, [("max by (job) (process_resident_memory_bytes)", "{{job}}", "A")], "bytes"),
         ],
         [DISK_VARIABLE],
     ),
