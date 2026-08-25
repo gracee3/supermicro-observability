@@ -61,6 +61,30 @@ def panel(pid, title, kind, x, y, w, h, queries, unit="short", description=""):
     return result
 
 
+def row(pid, title, y):
+    return {
+        "id": pid,
+        "title": title,
+        "type": "row",
+        "collapsed": False,
+        "panels": [],
+        "gridPos": {"x": 0, "y": y, "w": 24, "h": 1},
+    }
+
+
+def hide_legend(result, *, hide_axes=False):
+    result["options"]["legend"]["showLegend"] = False
+    if hide_axes:
+        result["fieldConfig"]["defaults"]["custom"]["axisPlacement"] = "hidden"
+    return result
+
+
+def text_stat(result):
+    result["options"]["graphMode"] = "none"
+    result["options"]["textMode"] = "value_and_name"
+    return result
+
+
 def dashboard(uid, title, tags, panels, variables=None):
     return {
         "annotations": {"list": []},
@@ -113,29 +137,46 @@ DASHBOARDS = {
         "Combined Custom / Host + GPU + Cooling",
         ["combined", "custom"],
         [
-            panel(1, "Per-core busy", "timeseries", 0, 0, 12, 8, [("100 - rate(node_cpu_seconds_total{job=\"node-fast\",mode=\"idle\"}[30s]) * 100", "CPU {{cpu}}", "A")], "percent"),
-            panel(2, "CPU modes", "timeseries", 12, 0, 12, 8, [("sum by (mode) (rate(node_cpu_seconds_total{job=\"node-fast\"}[30s])) * 100", "{{mode}}", "A")], "percent"),
-            panel(3, "PSI waiting time", "timeseries", 0, 8, 12, 8, [("rate(node_pressure_cpu_waiting_seconds_total{job=\"node-fast\"}[30s])", "CPU some", "A"), ("rate(node_pressure_memory_waiting_seconds_total{job=\"node-fast\"}[30s])", "memory some", "B"), ("rate(node_pressure_io_waiting_seconds_total{job=\"node-fast\"}[30s])", "I/O some", "C")], "percentunit"),
-            panel(4, "Memory", "timeseries", 12, 8, 12, 8, [("node_memory_MemTotal_bytes{job=\"node-fast\"} - node_memory_MemAvailable_bytes{job=\"node-fast\"}", "used", "A"), ("node_memory_MemAvailable_bytes{job=\"node-fast\"}", "available", "B"), ("node_memory_Cached_bytes{job=\"node-fast\"}", "cache", "C")], "bytes"),
-            panel(5, "Disk throughput", "timeseries", 0, 16, 12, 8, [("rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"$disk\"}[1m])", "{{device}} read", "A"), ("rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"$disk\"}[1m])", "{{device}} write", "B")], "Bps"),
-            panel(6, "Disk I/O latency", "timeseries", 12, 16, 12, 8, [("rate(node_disk_read_time_seconds_total{job=\"node-fast\",device=~\"$disk\"}[1m]) / clamp_min(rate(node_disk_reads_completed_total{job=\"node-fast\",device=~\"$disk\"}[1m]), 0.001)", "{{device}} read", "A"), ("rate(node_disk_write_time_seconds_total{job=\"node-fast\",device=~\"$disk\"}[1m]) / clamp_min(rate(node_disk_writes_completed_total{job=\"node-fast\",device=~\"$disk\"}[1m]), 0.001)", "{{device}} write", "B")], "s"),
-            panel(7, "Filesystem used", "timeseries", 0, 24, 8, 8, [("1 - node_filesystem_avail_bytes{job=\"node-slow\",fstype!~\"tmpfs|ramfs\"} / node_filesystem_size_bytes{job=\"node-slow\",fstype!~\"tmpfs|ramfs\"}", "{{mountpoint}}", "A")], "percentunit"),
-            panel(8, "Network throughput", "timeseries", 8, 24, 8, 8, [("rate(node_network_receive_bytes_total{job=\"node-fast\"}[1m])", "{{device}} RX", "A"), ("rate(node_network_transmit_bytes_total{job=\"node-fast\"}[1m])", "{{device}} TX", "B")], "Bps"),
-            panel(9, "Network errors / drops", "timeseries", 16, 24, 8, 8, [("rate(node_network_receive_errs_total{job=\"node-fast\"}[1m]) + rate(node_network_receive_drop_total{job=\"node-fast\"}[1m])", "{{device}} RX", "A"), ("rate(node_network_transmit_errs_total{job=\"node-fast\"}[1m]) + rate(node_network_transmit_drop_total{job=\"node-fast\"}[1m])", "{{device}} TX", "B")], "pps"),
-            panel(10, "GPU utilization", "timeseries", 0, 32, 12, 8, [("supermicro_gpu_utilization_percent", "GPU {{gpu_index}} current", "A"), ("supermicro_gpu_utilization_1s_percent_average", "GPU {{gpu_index}} 1s avg", "B"), ("supermicro_gpu_utilization_1s_percent_max", "GPU {{gpu_index}} 1s max", "C")], "percent"),
-            panel(11, "GPU temperature", "timeseries", 12, 32, 6, 8, [("supermicro_gpu_temperature_celsius", "GPU {{gpu_index}}", "A")], "celsius"),
-            panel(12, "GPU power", "timeseries", 18, 32, 6, 8, [("supermicro_gpu_power_draw_watts", "GPU {{gpu_index}} current", "A"), ("supermicro_gpu_power_draw_1s_watts_average", "GPU {{gpu_index}} 1s avg", "B"), ("supermicro_gpu_power_draw_1s_watts_max", "GPU {{gpu_index}} 1s max", "C")], "watt"),
-            panel(13, "GPU clocks", "timeseries", 0, 40, 8, 8, [("supermicro_gpu_graphics_clock_hertz", "GPU {{gpu_index}} graphics", "A"), ("supermicro_gpu_memory_clock_hertz", "GPU {{gpu_index}} memory", "B")], "hertz"),
-            panel(14, "GPU PCIe link", "timeseries", 8, 40, 8, 8, [("supermicro_gpu_pcie_link_generation", "GPU {{gpu_index}} generation", "A"), ("supermicro_gpu_pcie_link_width", "GPU {{gpu_index}} width", "B")], "short"),
-            panel(15, "GPU memory used", "timeseries", 16, 40, 8, 8, [("supermicro_gpu_memory_used_bytes", "GPU {{gpu_index}}", "A")], "bytes"),
-            panel(16, "GPU fan target", "timeseries", 0, 48, 8, 8, [("supermicro_gpu_fan_speed_percent", "GPU {{gpu_index}}", "A")], "percent"),
-            panel(17, "GPU throttle reasons", "timeseries", 8, 48, 16, 8, [("supermicro_gpu_throttle_reason_active", "GPU {{gpu_index}} {{reason}}", "A")], "bool"),
-            panel(18, "Fan RPM (IPMI cache)", "timeseries", 0, 56, 8, 8, [("supermicro_fan_speed_rpm", "{{fan}}", "A")], "rpm", "Cached fan-controller telemetry; monitoring does not poll IPMI or control fans."),
-            panel(19, "Zone duty (IPMI cache)", "timeseries", 8, 56, 8, 8, [("supermicro_fan_zone_duty_percent", "{{zone}}", "A")], "percent", "Cached fan-controller telemetry; a missing series does not imply a safe cooling state."),
-            panel(20, "Controller temperatures", "timeseries", 16, 56, 8, 8, [("supermicro_fan_temperature_celsius", "{{sensor_group}}", "A")], "celsius", "Aggregated cached controller inputs; values do not validate a cooling policy."),
-            panel(21, "Scrape duration", "timeseries", 0, 64, 8, 8, [("scrape_duration_seconds", "{{job}}", "A")], "s"),
-            panel(22, "Exporter CPU", "timeseries", 8, 64, 8, 8, [("sum by (job) (rate(process_cpu_seconds_total{job!=\"node-fast\"}[1m])) * 100", "{{job}}", "A")], "percent"),
-            panel(23, "Exporter RSS", "timeseries", 16, 64, 8, 8, [("max by (job) (process_resident_memory_bytes)", "{{job}}", "A")], "bytes"),
+            row(1, "Host summary", 0),
+            hide_legend(panel(2, "CPU utilization", "timeseries", 0, 1, 12, 8, [("100 - rate(node_cpu_seconds_total{job=\"node-fast\",mode=\"idle\"}[30s]) * 100", "", "A")], "percent"), hide_axes=True),
+            panel(3, "Memory", "timeseries", 12, 1, 12, 8, [("node_memory_MemTotal_bytes{job=\"node-fast\"} - node_memory_MemAvailable_bytes{job=\"node-fast\"}", "used", "A"), ("node_memory_MemAvailable_bytes{job=\"node-fast\"}", "available", "B"), ("node_memory_Cached_bytes{job=\"node-fast\"}", "cache", "C")], "bytes"),
+            text_stat(panel(4, "CPU frequency", "stat", 0, 9, 12, 4, [("avg(node_cpu_scaling_frequency_hertz{job=\"node-slow\"})", "current average", "A")], "hertz")),
+            text_stat(panel(5, "Memory utilization", "stat", 12, 9, 12, 4, [("100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node-fast\"}) / sum(node_memory_MemTotal_bytes{job=\"node-fast\"}))", "used", "A")], "percent")),
+            row(10, "GPU 0", 13),
+            panel(11, "Utilization", "timeseries", 0, 14, 8, 8, [("supermicro_gpu_utilization_percent{gpu_index=\"0\"}", "current", "A")], "percent"),
+            panel(12, "Memory used", "timeseries", 8, 14, 8, 8, [("supermicro_gpu_memory_used_bytes{gpu_index=\"0\"}", "used", "A")], "bytes"),
+            panel(13, "Temperature", "timeseries", 16, 14, 4, 8, [("supermicro_gpu_temperature_celsius{gpu_index=\"0\"}", "temperature", "A")], "celsius"),
+            panel(14, "Power", "timeseries", 20, 14, 4, 8, [("supermicro_gpu_power_draw_watts{gpu_index=\"0\"}", "power", "A")], "watt"),
+            panel(15, "Fan target", "timeseries", 0, 22, 8, 7, [("supermicro_gpu_fan_speed_percent{gpu_index=\"0\"}", "target", "A")], "percent"),
+            text_stat(panel(16, "Clocks", "stat", 8, 22, 8, 7, [("supermicro_gpu_graphics_clock_hertz{gpu_index=\"0\"}", "graphics", "A"), ("supermicro_gpu_memory_clock_hertz{gpu_index=\"0\"}", "memory", "B")], "hertz")),
+            text_stat(panel(17, "PCIe link", "stat", 16, 22, 8, 7, [("supermicro_gpu_pcie_link_generation{gpu_index=\"0\"}", "generation", "A"), ("supermicro_gpu_pcie_link_width{gpu_index=\"0\"}", "width", "B")], "short")),
+            row(20, "GPU 1", 29),
+            panel(21, "Utilization", "timeseries", 0, 30, 8, 8, [("supermicro_gpu_utilization_percent{gpu_index=\"1\"}", "current", "A")], "percent"),
+            panel(22, "Memory used", "timeseries", 8, 30, 8, 8, [("supermicro_gpu_memory_used_bytes{gpu_index=\"1\"}", "used", "A")], "bytes"),
+            panel(23, "Temperature", "timeseries", 16, 30, 4, 8, [("supermicro_gpu_temperature_celsius{gpu_index=\"1\"}", "temperature", "A")], "celsius"),
+            panel(24, "Power", "timeseries", 20, 30, 4, 8, [("supermicro_gpu_power_draw_watts{gpu_index=\"1\"}", "power", "A")], "watt"),
+            panel(25, "Fan target", "timeseries", 0, 38, 8, 7, [("supermicro_gpu_fan_speed_percent{gpu_index=\"1\"}", "target", "A")], "percent"),
+            text_stat(panel(26, "Clocks", "stat", 8, 38, 8, 7, [("supermicro_gpu_graphics_clock_hertz{gpu_index=\"1\"}", "graphics", "A"), ("supermicro_gpu_memory_clock_hertz{gpu_index=\"1\"}", "memory", "B")], "hertz")),
+            text_stat(panel(27, "PCIe link", "stat", 16, 38, 8, 7, [("supermicro_gpu_pcie_link_generation{gpu_index=\"1\"}", "generation", "A"), ("supermicro_gpu_pcie_link_width{gpu_index=\"1\"}", "width", "B")], "short")),
+            row(30, "Cooling telemetry", 45),
+            hide_legend(panel(31, "Fan RPM", "timeseries", 0, 46, 8, 8, [("supermicro_fan_speed_rpm", "", "A")], "rpm", "Cached fan-controller telemetry; monitoring does not poll IPMI or control fans.")),
+            hide_legend(panel(32, "Controller temperatures", "timeseries", 8, 46, 8, 8, [("supermicro_fan_temperature_celsius", "", "A")], "celsius", "Aggregated cached controller inputs; values do not validate a cooling policy.")),
+            panel(33, "Zone duty (IPMI)", "timeseries", 16, 46, 8, 8, [("supermicro_fan_zone_duty_percent", "{{zone}}", "A")], "percent", "Cached fan-controller telemetry; a missing series does not imply a safe cooling state."),
+            row(40, "Storage and network", 54),
+            panel(41, "Disk throughput", "timeseries", 0, 55, 12, 8, [("rate(node_disk_read_bytes_total{job=\"node-fast\",device=~\"$disk\"}[1m])", "{{device}} read", "A"), ("rate(node_disk_written_bytes_total{job=\"node-fast\",device=~\"$disk\"}[1m])", "{{device}} write", "B")], "Bps", "Use the dashboard disk control to select the reviewed mapped-root device."),
+            panel(42, "Network throughput", "timeseries", 12, 55, 12, 8, [("rate(node_network_receive_bytes_total{job=\"node-fast\"}[1m])", "{{device}} RX", "A"), ("rate(node_network_transmit_bytes_total{job=\"node-fast\"}[1m])", "{{device}} TX", "B")], "Bps"),
+            panel(43, "Disk I/O latency", "timeseries", 0, 63, 8, 8, [("rate(node_disk_read_time_seconds_total{job=\"node-fast\",device=~\"$disk\"}[1m]) / clamp_min(rate(node_disk_reads_completed_total{job=\"node-fast\",device=~\"$disk\"}[1m]), 0.001)", "{{device}} read", "A"), ("rate(node_disk_write_time_seconds_total{job=\"node-fast\",device=~\"$disk\"}[1m]) / clamp_min(rate(node_disk_writes_completed_total{job=\"node-fast\",device=~\"$disk\"}[1m]), 0.001)", "{{device}} write", "B")], "s"),
+            panel(44, "Filesystem used", "timeseries", 8, 63, 8, 8, [("1 - node_filesystem_avail_bytes{job=\"node-slow\",fstype!~\"tmpfs|ramfs\"} / node_filesystem_size_bytes{job=\"node-slow\",fstype!~\"tmpfs|ramfs\"}", "{{mountpoint}}", "A")], "percentunit"),
+            panel(45, "Network drops", "timeseries", 16, 63, 8, 8, [("rate(node_network_receive_errs_total{job=\"node-fast\"}[1m]) + rate(node_network_receive_drop_total{job=\"node-fast\"}[1m])", "{{device}} RX", "A"), ("rate(node_network_transmit_errs_total{job=\"node-fast\"}[1m]) + rate(node_network_transmit_drop_total{job=\"node-fast\"}[1m])", "{{device}} TX", "B")], "pps"),
+            row(50, "CPU detail", 71),
+            panel(51, "CPU modes", "timeseries", 0, 72, 12, 8, [("sum by (mode) (rate(node_cpu_seconds_total{job=\"node-fast\"}[30s])) * 100", "{{mode}}", "A")], "percent"),
+            panel(52, "PSI waiting time", "timeseries", 12, 72, 12, 8, [("rate(node_pressure_cpu_waiting_seconds_total{job=\"node-fast\"}[30s])", "CPU some", "A"), ("rate(node_pressure_memory_waiting_seconds_total{job=\"node-fast\"}[30s])", "memory some", "B"), ("rate(node_pressure_io_waiting_seconds_total{job=\"node-fast\"}[30s])", "I/O some", "C")], "percentunit"),
+            row(60, "GPU throttling", 80),
+            panel(61, "Throttle reasons", "timeseries", 0, 81, 24, 8, [("supermicro_gpu_throttle_reason_active", "GPU {{gpu_index}} {{reason}}", "A")], "bool"),
+            row(70, "Monitoring overhead", 89),
+            panel(71, "Scrape duration", "timeseries", 0, 90, 8, 8, [("scrape_duration_seconds", "{{job}}", "A")], "s"),
+            panel(72, "Exporter CPU", "timeseries", 8, 90, 8, 8, [("sum by (job) (rate(process_cpu_seconds_total{job!=\"node-fast\"}[1m])) * 100", "{{job}}", "A")], "percent"),
+            panel(73, "Exporter RSS", "timeseries", 16, 90, 8, 8, [("max by (job) (process_resident_memory_bytes)", "{{job}}", "A")], "bytes"),
         ],
         [DISK_VARIABLE],
     ),
