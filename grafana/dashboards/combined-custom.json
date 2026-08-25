@@ -300,41 +300,124 @@
     },
     {
       "id": 11,
-      "title": "Utilization",
+      "title": "GPU",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "gridPos": {
         "x": 0,
         "y": 10,
-        "w": 8,
+        "w": 9,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "unit": "short",
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
             "drawStyle": "line",
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "fillOpacity": 8,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": true,
+            "axisGridShow": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Utilization"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 10
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VRAM"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-blue"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 3
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "mode": "multi",
@@ -349,56 +432,10 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_utilization_percent{gpu_index=\"0\"}",
-          "legendFormat": "current",
+          "legendFormat": "Utilization",
           "range": true,
           "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 12,
-      "title": "Memory used",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 8,
-        "y": 10,
-        "w": 8,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -406,49 +443,194 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_memory_used_bytes{gpu_index=\"0\"}",
-          "legendFormat": "used",
+          "legendFormat": "VRAM",
           "range": true,
-          "refId": "A"
+          "refId": "B"
         }
       ]
     },
     {
       "id": 13,
-      "title": "Temperature",
+      "title": "Thermals & Power",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "gridPos": {
-        "x": 16,
+        "x": 9,
         "y": 10,
-        "w": 4,
+        "w": 9,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "celsius",
+          "unit": "short",
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
             "drawStyle": "line",
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "fillOpacity": 8,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": true,
+            "axisGridShow": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "orange",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 2
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 8
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fan"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-blue"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "hidden"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 2
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "mode": "multi",
@@ -463,56 +645,10 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_temperature_celsius{gpu_index=\"0\"}",
-          "legendFormat": "temperature",
+          "legendFormat": "Temperature",
           "range": true,
           "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 14,
-      "title": "Power",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 20,
-        "y": 10,
-        "w": 4,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -520,56 +656,10 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_power_draw_watts{gpu_index=\"0\"}",
-          "legendFormat": "power",
+          "legendFormat": "Power",
           "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 15,
-      "title": "Fan target",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 0,
-        "y": 18,
-        "w": 8,
-        "h": 7
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
+          "refId": "B"
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -577,97 +667,25 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_fan_speed_percent{gpu_index=\"0\"}",
-          "legendFormat": "target",
+          "legendFormat": "Fan",
           "range": true,
-          "refId": "A"
+          "refId": "C"
         }
       ]
     },
     {
       "id": 16,
-      "title": "Clocks",
+      "title": "",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "gridPos": {
-        "x": 8,
-        "y": 18,
-        "w": 8,
-        "h": 7
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "hertz",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "supermicro_gpu_graphics_clock_hertz{gpu_index=\"0\"}",
-          "legendFormat": "graphics",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "supermicro_gpu_memory_clock_hertz{gpu_index=\"0\"}",
-          "legendFormat": "memory",
-          "range": true,
-          "refId": "B"
-        }
-      ]
-    },
-    {
-      "id": 17,
-      "title": "PCIe link",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 16,
-        "y": 18,
-        "w": 8,
-        "h": 7
+        "x": 18,
+        "y": 10,
+        "w": 6,
+        "h": 8
       },
       "fieldConfig": {
         "defaults": {
@@ -684,7 +702,100 @@
             "spanNulls": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "hertz"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MEM"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "hertz"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCIe"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:Gen "
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LINK"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:x"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -694,11 +805,16 @@
           "fields": "",
           "values": false
         },
-        "orientation": "auto",
+        "orientation": "horizontal",
         "textMode": "value_and_name",
         "colorMode": "value",
         "graphMode": "none",
-        "justifyMode": "auto"
+        "justifyMode": "center",
+        "wideLayout": false,
+        "text": {
+          "titleSize": 11,
+          "valueSize": 20
+        }
       },
       "targets": [
         {
@@ -707,8 +823,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "supermicro_gpu_pcie_link_generation{gpu_index=\"0\"}",
-          "legendFormat": "generation",
+          "expr": "supermicro_gpu_graphics_clock_hertz{gpu_index=\"0\"}",
+          "legendFormat": "GPU",
           "range": true,
           "refId": "A"
         },
@@ -718,10 +834,32 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "supermicro_gpu_pcie_link_width{gpu_index=\"0\"}",
-          "legendFormat": "width",
+          "expr": "supermicro_gpu_memory_clock_hertz{gpu_index=\"0\"}",
+          "legendFormat": "MEM",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "supermicro_gpu_pcie_link_generation{gpu_index=\"0\"}",
+          "legendFormat": "PCIe",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "supermicro_gpu_pcie_link_width{gpu_index=\"0\"}",
+          "legendFormat": "LINK",
+          "range": true,
+          "refId": "D"
         }
       ]
     },
@@ -733,48 +871,131 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 18,
         "w": 24,
         "h": 1
       }
     },
     {
       "id": 21,
-      "title": "Utilization",
+      "title": "GPU",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "gridPos": {
         "x": 0,
-        "y": 26,
-        "w": 8,
+        "y": 19,
+        "w": 9,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "unit": "short",
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
             "drawStyle": "line",
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "fillOpacity": 8,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": true,
+            "axisGridShow": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Utilization"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 10
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VRAM"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-blue"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 3
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "mode": "multi",
@@ -789,56 +1010,10 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_utilization_percent{gpu_index=\"1\"}",
-          "legendFormat": "current",
+          "legendFormat": "Utilization",
           "range": true,
           "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 22,
-      "title": "Memory used",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 8,
-        "y": 26,
-        "w": 8,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -846,49 +1021,194 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_memory_used_bytes{gpu_index=\"1\"}",
-          "legendFormat": "used",
+          "legendFormat": "VRAM",
           "range": true,
-          "refId": "A"
+          "refId": "B"
         }
       ]
     },
     {
       "id": 23,
-      "title": "Temperature",
+      "title": "Thermals & Power",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "gridPos": {
-        "x": 16,
-        "y": 26,
-        "w": 4,
+        "x": 9,
+        "y": 19,
+        "w": 9,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "celsius",
+          "unit": "short",
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
             "drawStyle": "line",
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "fillOpacity": 8,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": true,
+            "axisGridShow": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "orange",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 2
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 8
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fan"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-blue"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "hidden"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 2
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "mode": "multi",
@@ -903,56 +1223,10 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_temperature_celsius{gpu_index=\"1\"}",
-          "legendFormat": "temperature",
+          "legendFormat": "Temperature",
           "range": true,
           "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 24,
-      "title": "Power",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 20,
-        "y": 26,
-        "w": 4,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -960,56 +1234,10 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_power_draw_watts{gpu_index=\"1\"}",
-          "legendFormat": "power",
+          "legendFormat": "Power",
           "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 25,
-      "title": "Fan target",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 0,
-        "y": 34,
-        "w": 8,
-        "h": 7
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
+          "refId": "B"
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
@@ -1017,97 +1245,25 @@
           },
           "editorMode": "code",
           "expr": "supermicro_gpu_fan_speed_percent{gpu_index=\"1\"}",
-          "legendFormat": "target",
+          "legendFormat": "Fan",
           "range": true,
-          "refId": "A"
+          "refId": "C"
         }
       ]
     },
     {
       "id": 26,
-      "title": "Clocks",
+      "title": "",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "gridPos": {
-        "x": 8,
-        "y": 34,
-        "w": 8,
-        "h": 7
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "hertz",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": true
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "supermicro_gpu_graphics_clock_hertz{gpu_index=\"1\"}",
-          "legendFormat": "graphics",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "supermicro_gpu_memory_clock_hertz{gpu_index=\"1\"}",
-          "legendFormat": "memory",
-          "range": true,
-          "refId": "B"
-        }
-      ]
-    },
-    {
-      "id": 27,
-      "title": "PCIe link",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "x": 16,
-        "y": 34,
-        "w": 8,
-        "h": 7
+        "x": 18,
+        "y": 19,
+        "w": 6,
+        "h": 8
       },
       "fieldConfig": {
         "defaults": {
@@ -1124,7 +1280,100 @@
             "spanNulls": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "hertz"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MEM"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "hertz"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PCIe"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:Gen "
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LINK"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:x"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -1134,11 +1383,16 @@
           "fields": "",
           "values": false
         },
-        "orientation": "auto",
+        "orientation": "horizontal",
         "textMode": "value_and_name",
         "colorMode": "value",
         "graphMode": "none",
-        "justifyMode": "auto"
+        "justifyMode": "center",
+        "wideLayout": false,
+        "text": {
+          "titleSize": 11,
+          "valueSize": 20
+        }
       },
       "targets": [
         {
@@ -1147,8 +1401,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "supermicro_gpu_pcie_link_generation{gpu_index=\"1\"}",
-          "legendFormat": "generation",
+          "expr": "supermicro_gpu_graphics_clock_hertz{gpu_index=\"1\"}",
+          "legendFormat": "GPU",
           "range": true,
           "refId": "A"
         },
@@ -1158,10 +1412,32 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "supermicro_gpu_pcie_link_width{gpu_index=\"1\"}",
-          "legendFormat": "width",
+          "expr": "supermicro_gpu_memory_clock_hertz{gpu_index=\"1\"}",
+          "legendFormat": "MEM",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "supermicro_gpu_pcie_link_generation{gpu_index=\"1\"}",
+          "legendFormat": "PCIe",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "supermicro_gpu_pcie_link_width{gpu_index=\"1\"}",
+          "legendFormat": "LINK",
+          "range": true,
+          "refId": "D"
         }
       ]
     },
@@ -1173,7 +1449,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 27,
         "w": 24,
         "h": 1
       }
@@ -1189,7 +1465,7 @@
       "description": "Cached fan-controller telemetry; monitoring does not poll IPMI or control fans.",
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 28,
         "w": 8,
         "h": 8
       },
@@ -1246,7 +1522,7 @@
       "description": "Aggregated cached controller inputs; values do not validate a cooling policy.",
       "gridPos": {
         "x": 8,
-        "y": 42,
+        "y": 28,
         "w": 8,
         "h": 8
       },
@@ -1303,7 +1579,7 @@
       "description": "Cached fan-controller telemetry; a missing series does not imply a safe cooling state.",
       "gridPos": {
         "x": 16,
-        "y": 42,
+        "y": 28,
         "w": 8,
         "h": 8
       },
@@ -1357,7 +1633,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 50,
+        "y": 36,
         "w": 24,
         "h": 1
       }
@@ -1373,7 +1649,7 @@
       "description": "Use the dashboard disk control to select the reviewed mapped-root device.",
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -1441,7 +1717,7 @@
       "description": "",
       "gridPos": {
         "x": 12,
-        "y": 51,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -1509,7 +1785,7 @@
       "description": "",
       "gridPos": {
         "x": 0,
-        "y": 59,
+        "y": 45,
         "w": 8,
         "h": 8
       },
@@ -1577,7 +1853,7 @@
       "description": "",
       "gridPos": {
         "x": 8,
-        "y": 59,
+        "y": 45,
         "w": 8,
         "h": 8
       },
@@ -1634,7 +1910,7 @@
       "description": "",
       "gridPos": {
         "x": 16,
-        "y": 59,
+        "y": 45,
         "w": 8,
         "h": 8
       },
@@ -1699,7 +1975,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 67,
+        "y": 53,
         "w": 24,
         "h": 1
       }
@@ -1715,7 +1991,7 @@
       "description": "",
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 54,
         "w": 12,
         "h": 8
       },
@@ -1772,7 +2048,7 @@
       "description": "",
       "gridPos": {
         "x": 12,
-        "y": 68,
+        "y": 54,
         "w": 12,
         "h": 8
       },
@@ -1848,7 +2124,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 62,
         "w": 24,
         "h": 1
       }
@@ -1864,7 +2140,7 @@
       "description": "",
       "gridPos": {
         "x": 0,
-        "y": 77,
+        "y": 63,
         "w": 24,
         "h": 8
       },
@@ -1918,7 +2194,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 85,
+        "y": 71,
         "w": 24,
         "h": 1
       }
@@ -1934,7 +2210,7 @@
       "description": "",
       "gridPos": {
         "x": 0,
-        "y": 86,
+        "y": 72,
         "w": 8,
         "h": 8
       },
@@ -1991,7 +2267,7 @@
       "description": "",
       "gridPos": {
         "x": 8,
-        "y": 86,
+        "y": 72,
         "w": 8,
         "h": 8
       },
@@ -2048,7 +2324,7 @@
       "description": "",
       "gridPos": {
         "x": 16,
-        "y": 86,
+        "y": 72,
         "w": 8,
         "h": 8
       },
